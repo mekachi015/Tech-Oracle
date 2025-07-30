@@ -39,9 +39,9 @@ app.add_middleware(
 class DeviceRepairRequest(BaseModel):
     deviceBrand: str
     deviceModel: str
-    deviceModelNumber: str
+    deviceModelNumber: str = None
     deviceIssue: str
-    additionalInfo: str
+    additionalInfo: str = None
     operatingSystem: str = None
     ram: str = None
     storage: str = None

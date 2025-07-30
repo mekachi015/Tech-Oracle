@@ -1,6 +1,7 @@
 "use client"
 import React, { useState } from 'react';
 import Stepper from './user-form-stepper';
+import { set } from 'zod';
 
 const UserForm = () => {
     const [currentStep, setCurrentStep] = useState(1);
@@ -27,6 +28,10 @@ const UserForm = () => {
         additionalInfo: '',
         files: [],
     });
+
+    const [repairGuide, setRepairGuide] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null)
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -316,6 +321,46 @@ const UserForm = () => {
         } else {
             // Handle final form submission
             console.log('Form submitted:', formData);
+            setLoading(true);
+            setError('');
+            setRepairGuide('');
+
+            try{
+                const payload = {
+                    deviceBrand: formData.deviceBrand,
+                    deviceModel: formData.deviceModel,
+                    deviceModelNumber: formData.moded, // Map frontend modelNumber to backend deviceModelNumber
+                    deviceIssue: formData.deviceIssue,
+                    additionalInfo: formData.additionalInfo,
+                    operatingSystem: formData.operatingSystem,
+                    ram: formData.ram,
+                    storage: formData.storage,
+                    processor: formData.processor,
+                    graphicsCard: formData.graphicsCard,
+                    serialNumber: formData.serialNumber,
+                }
+
+                const response = await fetch('http://localhost:8000/generate_repair_guide', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                        body: JSON.stringify(payload),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Something went wrong with the API call.')
+                }
+
+                const data = await response.json();
+                setRepairGuide(data.repair_guide);
+            } catch (err) {
+                console.error('Error generating repair guide:', err);
+                setError(err.message || 'An unexpected error occurred.');
+            } finally{
+                setLoading(false);
+            }
         }
     };
 
@@ -342,11 +387,30 @@ const UserForm = () => {
                                     <button
                                         type="submit"
                                         className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                        disabled={loading}
                                     >
+                                        {loading ? 'GGenerating...' : currentStep === 4 ? 'Generate Repair Guide' : 'Next' }
                                         {currentStep === 4 ? 'Submit' : 'Next'}
                                     </button>
                                 </div>
-                            </form>
+                            <form>
+                             {/* Display Repair Guide or Error */}
+                            {loading && (
+                                <div className="mt-6 text-center text-blue-600">
+                                    Generating repair guide...
+                                </div>
+                            )}
+                            {error && (
+                                <div className="mt-6 text-center text-red-600">
+                                    Error: {error}
+                                </div>
+                            )}
+                            {repairGuide && (
+                                <div className="mt-6 p-4 border rounded-md bg-gray-50">
+                                    <h3 className="text-xl font-bold text-gray-900 mb-2">Generated Repair Guide:</h3>
+                                    <pre className="whitespace-pre-wrap text-gray-800">{repairGuide}</pre>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
