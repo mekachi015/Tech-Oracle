@@ -314,7 +314,7 @@ const UserForm = () => {
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (currentStep < 4) {
             nextStep();
@@ -393,7 +393,7 @@ const UserForm = () => {
                                         {currentStep === 4 ? 'Submit' : 'Next'}
                                     </button>
                                 </div>
-                            <form>
+                            </form>
                              {/* Display Repair Guide or Error */}
                             {loading && (
                                 <div className="mt-6 text-center text-blue-600">

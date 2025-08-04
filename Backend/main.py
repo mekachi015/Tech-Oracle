@@ -1,28 +1,31 @@
 # main.py
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware # Import CORS middleware
+import datetime
+
+from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 import os
+
+from pymongo import MongoClient
+from bson import ObjectId
 import ollama
 from dotenv import load_dotenv
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, BeforeValidator, ConfigDict
+from typing import Optional, Annotated, List
 
 # Load environment variables from .env file
 load_dotenv()
 
 app = FastAPI(
     title="Tech Oracle AI Assistant",
-    description="An AI powered technical assistant for device repair.",
+    description="An AI powered technical assistant for device repair, with MongoDB storage.",
     version="0.1.0",
 )
 
 # --- CORS Configuration ---
-# This is crucial for your React frontend to communicate with your Python backend
-# when they are running on different ports/origins (e.g., React on 3000, FastAPI on 8000)
 origins = [
     "http://localhost:3000",  # Your React frontend's development URL
     "http://127.0.0.1:3000",
-    #"http://localhost:8000"
     # Add your production frontend URL(s) here when you deploy
     # "https://your-frontend-domain.com",
 ]
@@ -31,24 +34,85 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, PUT, DELETE, etc.)
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 # --- End CORS Configuration ---
 
+# --- MongoDB Connection Setup ---
+MONGO_DB_URL = os.getenv("MONGO_DB_URL", "mongodb://localhost:27017/")
+DB_NAME = os.getenv("DB_NAME", "tech-oracle")
+COLLECTION_NAME = os.getenv("COLLECTION_NAME", "repair_records")
+
+client = MongoClient(MONGO_DB_URL)
+db = client[DB_NAME]
+repair_records_collection = db[COLLECTION_NAME]
+
+print(f"Connected to MongoDB: {MONGO_DB_URL}, Database: {DB_NAME}, Collection: {COLLECTION_NAME}")
+# --- END Of Database setup ---
+
+# Custom type for ObjectId to string conversion for Pydantic
+PyObjectId = Annotated[str, BeforeValidator(str)]
+
 class DeviceRepairRequest(BaseModel):
+    """
+    Model for the initial device repair request from the frontend.
+    This is what gets saved first.
+    """
     deviceBrand: str
     deviceModel: str
-    deviceModelNumber: str = None
+    deviceModelNumber: Optional[str] = None
     deviceIssue: str
-    additionalInfo: str = None
-    operatingSystem: str = None
-    ram: str = None
-    storage: str = None
-    processor: str = None
-    graphicsCard: str = None
-    modelNumber: str = None
-    serialNumber: str = None
+    additionalInfo: Optional[str] = None
+    operatingSystem: Optional[str] = None
+    ram: Optional[str] = None
+    storage: Optional[str] = None
+    processor: Optional[str] = None
+    graphicsCard: Optional[str] = None
+    serialNumber: Optional[str] = None
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "deviceBrand": "Dell",
+                "deviceModel": "XPS 15",
+                "deviceIssue": "Screen flickering",
+                "additionalInfo": "Happens randomly."
+            }
+        }
+    )
+
+class RepairRecordInDB(DeviceRepairRequest):
+    """
+    Model for data stored in MongoDB.
+    repair_guide is now Optional as it's added later.
+    """
+    id: Optional[PyObjectId] = Field(alias="_id", default=None) # MongoDB _id
+    repair_guide: Optional[str] = Field(None, description="The AI Generated Repair Guide") # Made Optional
+    timestamp: Optional[str] = None # When the record was initially created
+    guide_generated_at: Optional[str] = None # When the guide was generated
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_schema_extra={
+            "example": {
+                "id": "60a1b2c3d4e5f6a7b8c9d0e1",
+                "deviceBrand": "Dell",
+                "deviceModel": "XPS 15",
+                "deviceIssue": "Screen flickering",
+                "repair_guide": "1. Check display cable... 2. Update drivers...",
+                "timestamp": "2025-08-04T11:00:00.000Z",
+                "guide_generated_at": "2025-08-04T11:05:00.000Z",
+                "additionalInfo": "Happens randomly."
+            }
+        }
+    )
+
+# --- End Pydantic Models ---
+
+
+# --- API Endpoints ---
 
 @app.get("/")
 async def read_root():
@@ -57,55 +121,148 @@ async def read_root():
     """
     return {"message": "Welcome to Tech Oracle Repair Assistant API!"}
 
-@app.get("/generate")
-def generate_response(prompt: str):
-        response =ollama.chat(model="llama3", messages=[{"role": "user", "content": prompt}])
+@app.get("/generate", response_model=dict, summary="Generate a general AI response")
+async def generate_response(prompt: str):
+    """
+    Generates a general AI response based on a given prompt.
+    """
+    try:
+        response = ollama.chat(model="llama3", messages=[{"role": "user", "content": prompt}])
         return {"response": response['message']['content']}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate response from AI: {str(e)}")
 
-@app.post("/generate_repair_guide")
-def generate_repair_guide(request_data: DeviceRepairRequest):
-    prompts_parts = []
-    prompts_parts.append("Gauge the complexity of fixing the issue on a scale of one to ten.")
-    prompts_parts.append("Generate a list of tools and components that would be required to repair.")
-    prompts_parts.append("Generate a detailed step-by-step guide on how to fix this issue with the tools and components.")
-    prompts_parts.append("Generate a detailed step-by-step guide on how to test that the issue is resolved.")
-    prompts_parts.append("The details of the device are as follows:")
-    prompts_parts.append(f"Device Brand: {request_data.deviceBrand}")
-    prompts_parts.append(f"Device Model: {request_data.deviceModel}")
-    prompts_parts.append(f"Model Number: {request_data.deviceModelNumber}")
-    prompts_parts.append(f"With the following issue: {request_data.deviceIssue}")
-    prompts_parts.append(f"And this additional information: {request_data.additionalInfo}")
 
-    if request_data.operatingSystem:
-        prompts_parts.append(f"It runs on {request_data.operatingSystem}.")
-    if request_data.ram:
-        prompts_parts.append(f"It has {request_data.ram} RAM.")
-    if request_data.storage:
-        prompts_parts.append(f"It has {request_data.storage} storage.")
-    if request_data.processor:
-        prompts_parts.append(f"The processor is {request_data.processor}.")
-    if request_data.graphicsCard:
-        prompts_parts.append(f"The graphics card is {request_data.graphicsCard}.")
-    if request_data.modelNumber:
-        prompts_parts.append(f"The model number is {request_data.modelNumber}.")
-    if request_data.serialNumber:
-        prompts_parts.append(f"The serial number is {request_data.serialNumber}.")
+@app.post("/add_repairs", response_model=RepairRecordInDB, status_code=status.HTTP_201_CREATED, summary="Add a new device repair request to the database")
+async def add_to_db(request_data: DeviceRepairRequest): # Accepts only DeviceRepairRequest
+    """
+    Saves a new device repair request to MongoDB.
+    The AI repair guide will be generated and added in a separate step.
+    """
+    # Convert Pydantic model to a dictionary suitable for MongoDB
+    record_data_dict = request_data.model_dump() # No by_alias needed here for _id
 
-    full_prompt = "\n".join(prompts_parts)
-    print(f"Generated Prompt:\n---\n{full_prompt}\n---")
+    record_data_dict["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    record_data_dict["repair_guide"] = None # Explicitly set to None initially
+    record_data_dict["guide_generated_at"] = None # No guide generated yet
 
     try:
-        response = ollama.chat(model="llama3", messages=[{"role": "user", "content": full_prompt}])
-        ai_response_content = response['message']['content']
-        return {"repair_guide": ai_response_content}
+        result = repair_records_collection.insert_one(record_data_dict)
+        # Update the dictionary with the MongoDB-generated _id
+        record_data_dict["_id"] = result.inserted_id
+        # Return the saved record, converted back to the Pydantic model for validation/response
+        return RepairRecordInDB(**record_data_dict)
     except Exception as e:
-        print(f"Error calling Ollama: {e}")
-        return {"error": f"Failed to generate response from AI: {str(e)}"}, 500
+        print(f"Error saving to MongoDB: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to save repair record to database: {str(e)}")
 
 
+@app.post("/generate_guide_for_record/{record_id}", response_model=RepairRecordInDB, summary="Generate and save an AI repair guide for an existing record")
+async def generate_guide_for_record(record_id: str):
+    """
+    Retrieves an existing device repair record by ID, generates an AI guide for it,
+    and updates the record in the database with the generated guide.
+    """
+    if not ObjectId.is_valid(record_id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid record ID format")
 
-# You'll add more endpoints here later for:
-# - /submit-issue (POST): To receive user info, device details, issue, and files.
-# - /repair-cases (GET): To list all repair cases for the technician.
-# - /repair-cases/{id} (GET, PUT): To view/update a specific repair case.
-# - File upload endpoints (if handled separately from submission)
+    try:
+        # 1. Fetch the existing record
+        existing_record_dict = repair_records_collection.find_one({"_id": ObjectId(record_id)})
+        if not existing_record_dict:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Record with ID {record_id} not found")
+
+        # Convert to Pydantic model for easy access to fields and validation
+        # We need to explicitly convert _id to id for the Pydantic model to populate correctly
+        existing_record = RepairRecordInDB(**existing_record_dict)
+
+        # 2. Build the prompt using data from the fetched record
+        prompts_parts = []
+        prompts_parts.append("Gauge the complexity of fixing the issue on a scale of one to ten.")
+        prompts_parts.append("Generate a list of tools and components that would be required to repair.")
+        prompts_parts.append("Generate a detailed step-by-step guide on how to fix this issue with the tools and components.")
+        prompts_parts.append("Generate a detailed step-by-step guide on how to test that the issue is resolved.")
+        prompts_parts.append("The details of the device are as follows:")
+        prompts_parts.append(f"Device Brand: {existing_record.deviceBrand}")
+        prompts_parts.append(f"Device Model: {existing_record.deviceModel}")
+        if existing_record.deviceModelNumber:
+            prompts_parts.append(f"Model Number: {existing_record.deviceModelNumber}.")
+        prompts_parts.append(f"With the following issue: {existing_record.deviceIssue}")
+        if existing_record.additionalInfo:
+            prompts_parts.append(f"And this additional information: {existing_record.additionalInfo}.")
+
+        if existing_record.operatingSystem:
+            prompts_parts.append(f"It runs on {existing_record.operatingSystem}.")
+        if existing_record.ram:
+            prompts_parts.append(f"It has {existing_record.ram} RAM.")
+        if existing_record.storage:
+            prompts_parts.append(f"It has {existing_record.storage} storage.")
+        if existing_record.processor:
+            prompts_parts.append(f"The processor is {existing_record.processor}.")
+        if existing_record.graphicsCard:
+            prompts_parts.append(f"The graphics card is {existing_record.graphicsCard}.")
+        if existing_record.serialNumber:
+            prompts_parts.append(f"The serial number is {existing_record.serialNumber}.")
+
+        full_prompt = "\n".join(prompts_parts)
+        print(f"Generated Prompt for guide:\n---\n{full_prompt}\n---")
+
+        # 3. Call Ollama to generate the guide
+        ollama_response = ollama.chat(model="llama3", messages=[{"role": "user", "content": full_prompt}])
+        generated_guide = ollama_response['message']['content']
+
+        # 4. Update the record in the database
+        update_data = {
+            "repair_guide": generated_guide,
+            "guide_generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+        result = repair_records_collection.update_one(
+            {"_id": ObjectId(record_id)},
+            {"$set": update_data}
+        )
+
+        if result.modified_count == 0 and result.matched_count == 0:
+            # This case indicates record was somehow deleted between find_one and update_one
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Record with ID {record_id} not found for update.")
+
+        # 5. Fetch the updated record to return
+        updated_record_dict = repair_records_collection.find_one({"_id": ObjectId(record_id)})
+        return RepairRecordInDB(**updated_record_dict)
+
+    except HTTPException: # Re-raise HTTPExceptions (like 400, 404)
+        raise
+    except Exception as e:
+        print(f"Error generating or updating guide for record {record_id}: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate or update repair guide: {str(e)}")
+
+
+@app.get("/api/repair_records", response_model=List[RepairRecordInDB], summary="Retrieve all saved repair records")
+async def get_all_repair_records():
+    """
+    Retrieves all previously saved device repair requests and their generated guides from MongoDB.
+    """
+    records = []
+    try:
+        for record in repair_records_collection.find().sort("timestamp", -1):
+            records.append(RepairRecordInDB(**record))
+        return records
+    except Exception as e:
+        print(f"Error fetching records from MongoDB: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to retrieve repair records: {str(e)}")
+
+
+@app.get("/api/repair_records/{record_id}", response_model=RepairRecordInDB, summary="Retrieve a single repair record by ID")
+async def get_repair_record(record_id: str):
+    """
+    Retrieves a single repair record by its unique ID from MongoDB.
+    """
+    if not ObjectId.is_valid(record_id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid record ID format")
+    try:
+        record = repair_records_collection.find_one({"_id": ObjectId(record_id)})
+        if record:
+            return RepairRecordInDB(**record)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Record with ID {record_id} not found")
+    except Exception as e:
+        print(f"Error fetching record {record_id} from MongoDB: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to retrieve repair record: {str(e)}")
