@@ -108,7 +108,23 @@ class RepairRecordInDB(DeviceRepairRequest):
             }
         }
     )
-
+    
+class RepairGuide(BaseModel): # Model for the AI generated repair guide
+    complexity:str
+    tools: list[str]
+    repair_steps: list[str]
+    testing_steps: list[str]
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "complexity": "7/10",
+                "tools": ["Phillips screwdriver", "Anti-static wrist strap"],
+                "repair_steps": ["Power down the device", "Remove the back panel"],
+                "testing_steps": ["Power on the device", "Run diagnostics"]
+            }
+        }
+    )
 # --- End Pydantic Models ---
 
 
@@ -156,84 +172,113 @@ async def add_to_db(request_data: DeviceRepairRequest): # Accepts only DeviceRep
         print(f"Error saving to MongoDB: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to save repair record to database: {str(e)}")
 
+def create_structured_prompt(device_info: RepairRecordInDB) -> str:
+    """
+    Creates a structured prompt that will generate consistently formatted responses
+    """
+    prompt_template = """
+Please provide a repair guide in the following specific format:
 
+**Complexity Level:**
+[COMPLEXITY_START]{complexity}[COMPLEXITY_END]
+
+**Required Tools and Components:**
+[TOOLS_START]{tools}[TOOLS_END]
+
+**Step-by-Step Guide to Fixing the Issue:**
+[STEPS_START]{steps}[STEPS_END]
+
+**Step-by-Step Guide to Testing:**
+[TESTING_START]{testing}[TESTING_END]
+
+Device Information:
+- Brand: {brand}
+- Model: {model}
+- Issue: {issue}
+{additional_info}
+{specs}
+"""
+    
+    # Build additional info section
+    additional_info = ""
+    if device_info.additionalInfo:
+        additional_info = f"- Additional Details: {device_info.additionalInfo}\n"
+    
+    # Build specs section
+    specs_list = []
+    if device_info.operatingSystem:
+        specs_list.append(f"- OS: {device_info.operatingSystem}")
+    if device_info.ram:
+        specs_list.append(f"- RAM: {device_info.ram}")
+    if device_info.storage:
+        specs_list.append(f"- Storage: {device_info.storage}")
+    if device_info.processor:
+        specs_list.append(f"- CPU: {device_info.processor}")
+    if device_info.graphicsCard:
+        specs_list.append(f"- GPU: {device_info.graphicsCard}")
+    
+    specs = "\n".join(specs_list) if specs_list else ""
+
+    return prompt_template.format(
+        complexity="[COMPLEXITY_CONTENT]",  # Placeholder
+        tools="[TOOLS_CONTENT]",  # Placeholder
+        steps="[STEPS_CONTENT]",  # Placeholder
+        testing="[TESTING_CONTENT]",  # Placeholder
+        brand=device_info.deviceBrand,
+        model=device_info.deviceModel,
+        issue=device_info.deviceIssue,
+        additional_info=additional_info,
+        specs=specs,
+    )
 @app.post("/generate_guide_for_record/{record_id}", response_model=RepairRecordInDB, summary="Generate and save an AI repair guide for an existing record")
 async def generate_guide_for_record(record_id: str):
-    """
-    Retrieves an existing device repair record by ID, generates an AI guide for it,
-    and updates the record in the database with the generated guide.
-    """
     if not ObjectId.is_valid(record_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid record ID format")
 
     try:
-        # 1. Fetch the existing record
+        # Fetch existing record
         existing_record_dict = repair_records_collection.find_one({"_id": ObjectId(record_id)})
         if not existing_record_dict:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Record with ID {record_id} not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                              detail=f"Record with ID {record_id} not found")
 
-        # Convert to Pydantic model for easy access to fields and validation
-        # We need to explicitly convert _id to id for the Pydantic model to populate correctly
         existing_record = RepairRecordInDB(**existing_record_dict)
-
-        # 2. Build the prompt using data from the fetched record
-        prompts_parts = []
-        prompts_parts.append("Gauge the complexity of fixing the issue on a scale of one to ten.")
-        prompts_parts.append("Generate a list of tools and components that would be required to repair.")
-        prompts_parts.append("Generate a detailed step-by-step guide on how to fix this issue with the tools and components.")
-        prompts_parts.append("Generate a detailed step-by-step guide on how to test that the issue is resolved.")
-        prompts_parts.append("The details of the device are as follows:")
-        prompts_parts.append(f"Device Brand: {existing_record.deviceBrand}")
-        prompts_parts.append(f"Device Model: {existing_record.deviceModel}")
-        if existing_record.deviceModelNumber:
-            prompts_parts.append(f"Model Number: {existing_record.deviceModelNumber}.")
-        prompts_parts.append(f"With the following issue: {existing_record.deviceIssue}")
-        if existing_record.additionalInfo:
-            prompts_parts.append(f"And this additional information: {existing_record.additionalInfo}.")
-
-        if existing_record.operatingSystem:
-            prompts_parts.append(f"It runs on {existing_record.operatingSystem}.")
-        if existing_record.ram:
-            prompts_parts.append(f"It has {existing_record.ram} RAM.")
-        if existing_record.storage:
-            prompts_parts.append(f"It has {existing_record.storage} storage.")
-        if existing_record.processor:
-            prompts_parts.append(f"The processor is {existing_record.processor}.")
-        if existing_record.graphicsCard:
-            prompts_parts.append(f"The graphics card is {existing_record.graphicsCard}.")
-        if existing_record.serialNumber:
-            prompts_parts.append(f"The serial number is {existing_record.serialNumber}.")
-
-        full_prompt = "\n".join(prompts_parts)
-        print(f"Generated Prompt for guide:\n---\n{full_prompt}\n---")
-
-        # 3. Call Ollama to generate the guide
-        ollama_response = ollama.chat(model="llama3", messages=[{"role": "user", "content": full_prompt}])
-        generated_guide = ollama_response['message']['content']
-
-        # 4. Update the record in the database
+        
+        # Generate structured prompt
+        prompt = create_structured_prompt(existing_record)
+        
+        # Get AI response
+        response = ollama.chat(model="llama3", messages=[
+            {"role": "user", "content": prompt}
+        ])
+        generated_guide = response['message']['content']
+        
+        # Store the formatted guide
         update_data = {
             "repair_guide": generated_guide,
             "guide_generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
+        
+        # Update database
         result = repair_records_collection.update_one(
             {"_id": ObjectId(record_id)},
             {"$set": update_data}
         )
 
         if result.modified_count == 0 and result.matched_count == 0:
-            # This case indicates record was somehow deleted between find_one and update_one
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Record with ID {record_id} not found for update.")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                              detail=f"Record with ID {record_id} not found for update")
 
-        # 5. Fetch the updated record to return
-        updated_record_dict = repair_records_collection.find_one({"_id": ObjectId(record_id)})
-        return RepairRecordInDB(**updated_record_dict)
+        # Return updated record
+        updated_record = repair_records_collection.find_one({"_id": ObjectId(record_id)})
+        return RepairRecordInDB(**updated_record)
 
-    except HTTPException: # Re-raise HTTPExceptions (like 400, 404)
+    except HTTPException:
         raise
     except Exception as e:
-        print(f"Error generating or updating guide for record {record_id}: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate or update repair guide: {str(e)}")
+        print(f"Error generating guide: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                          detail=f"Failed to generate repair guide: {str(e)}")
 
 
 @app.get("/api/repair_records", response_model=List[RepairRecordInDB], summary="Retrieve all saved repair records")

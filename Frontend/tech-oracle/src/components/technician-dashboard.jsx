@@ -26,9 +26,6 @@ import {
 const RepairGuideFormatter = ({ repairGuide }) => {
   // Parse the repair guide text into structured sections
   const parseRepairGuide = (guide) => {
-  // Debug: Initial guide content
-  console.log('Raw guide content:', guide);
-  
   if (!guide) {
     console.warn('Guide is empty or null');
     return null;
@@ -41,63 +38,51 @@ const RepairGuideFormatter = ({ repairGuide }) => {
     testing: []
   };
 
-  // Debug: Complexity matching
-  const complexityMatch = guide.match(/\*\*Complexity Level:\*\*\s*(.+?)(?=\n\n|\*\*Required Tools)/s);
-  console.log('Complexity match:', complexityMatch);
+  // Extract Complexity
+  const complexityMatch = guide.match(/\*\*Complexity Level:\*\*\s*(.+)/);
   if (complexityMatch) {
     sections.complexity = complexityMatch[1].trim();
-    console.log('Extracted complexity:', sections.complexity);
   } else {
     console.warn('Failed to match complexity section');
   }
 
-  // Debug: Tools matching
-  const toolsMatch = guide.match(/\*\*Required Tools and Components:\*\*\s*([\s\S]*?)(?=\*\*Step-by-Step Guide to Fixing)/);
-  console.log('Tools match:', toolsMatch);
+  // Extract Tools
+  const toolsMatch = guide.match(/\*\*Required Tools and Components:\*\*\s*([\s\S]*?)(?=\*\*Step-by-Step Guide)/);
   if (toolsMatch) {
-    const toolsText = toolsMatch[1];
+    const toolsText = toolsMatch[1].trim();
     sections.tools = toolsText
-      .split(/\d+\.\s/)
-      .filter(item => item.trim())
-      .map(item => item.trim());
-    console.log('Extracted tools:', sections.tools);
+      .split('\n')
+      .map(item => item.replace(/^\d+\.\s*/, '').trim())
+      .filter(item => item !== '');
   } else {
     console.warn('Failed to match tools section');
   }
 
-  // Debug: Steps matching
-  const stepsMatch = guide.match(/\*\*Step-by-Step Guide to Fixing the Issue:\*\*\s*([\s\S]*?)(?=\*\*Step-by-Step Guide to Testing)/);
-  console.log('Steps match:', stepsMatch);
+  // Extract Steps
+  const stepsMatch = guide.match(/\*\*Step-by-Step Guide to Fix the Issue:\*\*\s*([\s\S]*?)(?=\*\*Step-by-Step Guide to Test)/);
   if (stepsMatch) {
-    const stepsText = stepsMatch[1];
-    const steps = stepsText
-      .split(/\d+\.\s/)
-      .filter(item => item.trim())
-      .map(item => item.trim().replace(/\*\*/g, ''));
-    sections.stepByStep = steps;
-    console.log('Extracted steps:', sections.stepByStep);
+    const stepsText = stepsMatch[1].trim();
+    sections.stepByStep = stepsText
+      .split('\n')
+      .map(item => item.replace(/^\d+\.\s*/, '').trim())
+      .filter(item => item !== '');
   } else {
     console.warn('Failed to match steps section');
   }
 
-  // Debug: Testing steps matching
-  const testingMatch = guide.match(/\*\*Step-by-Step Guide to Testing:\*\*\s*([\s\S]*?)(?=\*\*Additional Tips|\*\*Note:|$)/);
-  console.log('Testing steps match:', testingMatch);
+  // Extract Testing
+  const testingMatch = guide.match(/\*\*Step-by-Step Guide to Test the Fix:\*\*\s*([\s\S]*)/);
   if (testingMatch) {
-    const testingText = testingMatch[1];
-    const testingSteps = testingText
-      .split(/\d+\.\s/)
-      .filter(item => item.trim())
-      .map(item => item.trim().replace(/\*\*/g, ''));
-    sections.testing = testingSteps;
-    console.log('Extracted testing steps:', sections.testing);
+    const testingText = testingMatch[1].trim();
+    sections.testing = testingText
+      .split('\n')
+      .map(item => item.replace(/^\d+\.\s*/, '').trim())
+      .filter(item => item !== '');
   } else {
     console.warn('Failed to match testing section');
   }
 
-  // Debug: Final parsed sections
   console.log('Final parsed sections:', sections);
-  
   return sections;
 };
 
