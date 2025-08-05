@@ -177,27 +177,60 @@ def create_structured_prompt(device_info: RepairRecordInDB) -> str:
     Creates a structured prompt that will generate consistently formatted responses
     """
     prompt_template = """
-Create a detailed, step-by-step repair guide for the device issue described below. Please adhere strictly to the following formatting rules to ensure a structured and easily parsable response:
+    
+You are an AI repair guide generator. Follow these instructions EXACTLY:
 
-1.  **Delimiters:** Use the specified start and end delimiters for each section of the guide. This is crucial for automated parsing.
-2.  **Lists:** Format lists of items (e.g., tools, repair steps, testing steps) as comma-separated values, with each item on a new line.
-3.  **Complexity:** Express the complexity of the repair on a scale of 1 to 10, where 1 indicates a very easy repair and 10 indicates an extremely complex repair.
+1. Generate ONLY the content within the delimiters
+2. DO NOT add ANY text outside the delimiters
+3. DO NOT include any headings, explanations, or additional formatting
+4. Each item in lists must end with a comma and be on a new line
+5. Base your response on the device details provided below
 
-Your response MUST include the following sections, each enclosed within its designated delimiters:
+REQUIRED FORMAT:
 
-*   **Complexity Level:** `[COMPLEXITY_START] <complexity_value> [COMPLEXITY_END]`
-*   **Required Tools and Components:** `[TOOLS_START] <tool_1>,\n<tool_2>,\n... [TOOLS_END]`
-*   **Step-by-Step Guide to Fixing the Issue:** `[STEPS_START] <step_1>,\n<step_2>,\n... [STEPS_END]`
-*   **Step-by-Step Guide to Testing:** `[TESTING_START] <test_1>,\n<test_2>,\n... [TESTING_END]`
+[COMPLEXITY_START]
+<number 1-10>
+[COMPLEXITY_END]
 
-Please ensure that each section is clearly defined and follows the specified format. The response should be comprehensive, covering all aspects of the repair process for the device described below:
+[TOOLS_START]
+<tool 1>,
+<tool 2>,
+<tool 3>,
+[TOOLS_END]
 
-Device Information:
-- Brand: {brand}
-- Model: {model}
-- Issue: {issue}
+[STEPS_START]
+<step 1>,
+<step 2>,
+<step 3>,
+[STEPS_END]
+
+[TESTING_START]
+<test 1>,
+<test 2>,
+<test 3>,
+[TESTING_END]
+
+DEVICE DETAILS:
+Brand: {brand}
+Model: {model}
+Issue: {issue}
 {additional_info}
 {specs}
+
+IMPORTANT: Your response must ONLY contain the sections within delimiters. NO OTHER TEXT.
+Device Details:
+Brand: {brand}
+Model: {model}
+Issue: {issue}
+{additional_info}
+{specs}
+
+Remember:
+- Each section must be enclosed in its exact delimiters
+- Items within sections should be comma-separated and on new lines
+- No additional text or headings should be included
+- No explanations or introductions
+- Only output the formatted content within delimiters
 """
     
     # Build additional info section

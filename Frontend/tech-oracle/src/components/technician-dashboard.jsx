@@ -21,12 +21,13 @@ import {
   DialogContent,
   DialogActions
 } from '@mui/material';
+import { set } from 'zod';
 
 // RepairGuideFormatter Component (extracted from the artifact above)
 const RepairGuideFormatter = ({ repairGuide }) => {
   console.log('Repair Guide:', repairGuide);
   // Parse the repair guide text into structured sections
-  const parseRepairGuide = (guide) => {
+const parseRepairGuide = (guide) => {
   if (!guide) {
     console.warn('Guide is empty or null');
     return null;
@@ -40,68 +41,39 @@ const RepairGuideFormatter = ({ repairGuide }) => {
   };
 
   // Extract Complexity
-  const complexityMatch = guide.match(/\*\*Complexity Level:\*\*\s*(.+)/);
+  const complexityMatch = guide.match(/\*\*Complexity Level:\*\* (.+?)(?=\n|$)/);
   if (complexityMatch) {
     sections.complexity = complexityMatch[1].trim();
-  } else {
-    console.warn('Failed to match complexity section');
   }
 
   // Extract Tools
-  const toolsMatch = guide.match(/\*\*Required Tools and Components:\*\*\s*([\s\S]*?)(?=\*\*Step-by-Step Guide)/);
+  const toolsMatch = guide.match(/\*\*Required Tools and Components:\*\*\n\n([\s\S]*?)(?=\n\n\*\*Step-by-Step)/);
   if (toolsMatch) {
-    const toolsText = toolsMatch[1].trim();
-    sections.tools = toolsText
+    sections.tools = toolsMatch[1]
       .split('\n')
-      .map(item => item.replace(/^\d+\.\s*/, '').trim())
-      .filter(item => item !== '');
-  } else {
-    console.warn('Failed to match tools section');
+      .map(item => item.replace(/^\* /, '').trim())
+      .filter(Boolean);
   }
 
   // Extract Steps
-    const stepsMatch = guide.match(/\*\*Step-by-Step Guide to Fix the Issue:\*\*\s*([\s\S]*?)(?=\*\*Step-by-Step Guide to Testing:|\*\*Testing Guide:|\*\*Step-by-Step Guide to Test that the Issue is Resolved:|$)/);
+  const stepsMatch = guide.match(/\*\*Step-by-Step Guide to Fixing the Issue:\*\*\n\n([\s\S]*?)(?=\n\n\*\*Step-by-Step Guide to Testing)/);
   if (stepsMatch) {
-    const stepsText = stepsMatch[1].trim();
-    sections.stepByStep = stepsText
+    sections.stepByStep = stepsMatch[1]
       .split('\n')
-      .map(item => item.replace(/^\d+\.\s*/, '').trim())
-      .filter(item => item !== '');
-  } else {
-    console.warn('Failed to match steps section');
+      .map(item => item.replace(/^\d+\. /, '').trim())
+      .filter(Boolean);
   }
 
   // Extract Testing
-  const testingMatch = guide.match(/\*\*Step-by-Step Guide to Testing the Issue is Resolved:\*\*\s*([\s\S]*?)(?=$)/);
-  if (!testingMatch) {
-      const testingMatchAlt = guide.match(/\*\*Testing Guide:\*\*\s*([\s\S]*?)(?=$)/);
-      if (!testingMatchAlt) {
-          const testingMatchAlt2 = guide.match(/\*\*Testing:\*\*\s*([\s\S]*?)(?=$)/);
-          if (testingMatchAlt2) {
-              const testingText = testingMatchAlt2[1].trim();
-              sections.testing = testingText
-                  .split('\n')
-                  .map(item => item.replace(/^\d+\.\s*/, '').trim())
-                  .filter(item => item !== '');
-          } else {
-              console.warn('Failed to match testing section');
-          }
-      } else {
-          const testingText = testingMatchAlt[1].trim();
-          sections.testing = testingText
-              .split('\n')
-              .map(item => item.replace(/^\d+\.\s*/, '').trim())
-              .filter(item => item !== '');
-      }
-  } else {
-      const testingText = testingMatch[1].trim();
-      sections.testing = testingText
-          .split('\n')
-          .map(item => item.replace(/^\d+\.\s*/, '').trim())
-          .filter(item => item !== '');
+  const testingMatch = guide.match(/\*\*Step-by-Step Guide to Testing:\*\*\n\n([\s\S]*?)(?=\n\n\*\*Additional|$)/);
+  if (testingMatch) {
+    sections.testing = testingMatch[1]
+      .split('\n')
+      .map(item => item.replace(/^\d+\. /, '').trim())
+      .filter(Boolean);
   }
 
-  console.log('Final parsed sections:', sections);
+  console.log('Parsed sections:', sections);
   return sections;
 };
 
@@ -268,6 +240,8 @@ const TechnicianDashboard = () => {
   const [selectedGuide, setSelectedGuide] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  const [generatingGuideId, setGeneratingGuide] = useState(null);
+
   useEffect(() => {
     fetchRepairRecords();
   }, []);
@@ -291,6 +265,7 @@ const TechnicianDashboard = () => {
   };
 
   const generateGuide = async (recordId) => {
+    setGeneratingGuide(recordId);
     try {
       const response = await fetch(`http://localhost:8000/generate_guide_for_record/${recordId}`, {
         method: 'POST'
@@ -303,6 +278,8 @@ const TechnicianDashboard = () => {
     } catch (error) {
       console.error('Error generating guide:', error);
       setError('Failed to generate repair guide. Please try again.');
+    } finally {
+      setGeneratingGuide(null);
     }
   };
 
@@ -329,7 +306,7 @@ const TechnicianDashboard = () => {
       <Typography variant="h4" gutterBottom>
         Technician Dashboard
       </Typography>
-      
+
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -356,9 +333,13 @@ const TechnicianDashboard = () => {
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
-                    Brand: {record.deviceBrand}<br/>
-                    Model: {record.deviceModel}<br/>
-                    {record.deviceModelNumber && `Model #: ${record.deviceModelNumber}`}<br/>
+                    Brand: {record.deviceBrand}
+                    <br />
+                    Model: {record.deviceModel}
+                    <br />
+                    {record.deviceModelNumber &&
+                      `Model #: ${record.deviceModelNumber}`}
+                    <br />
                     {record.serialNumber && `Serial #: ${record.serialNumber}`}
                   </Typography>
                 </TableCell>
@@ -366,16 +347,23 @@ const TechnicianDashboard = () => {
                   <Typography variant="body2">
                     {record.deviceIssue}
                     {record.additionalInfo && (
-                      <><br/><em>Additional info: {record.additionalInfo}</em></>
+                      <>
+                        <br />
+                        <em>Additional info: {record.additionalInfo}</em>
+                      </>
                     )}
                   </Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
-                    {record.operatingSystem && `OS: ${record.operatingSystem}`}<br/>
-                    {record.ram && `RAM: ${record.ram}`}<br/>
-                    {record.storage && `Storage: ${record.storage}`}<br/>
-                    {record.processor && `CPU: ${record.processor}`}<br/>
+                    {record.operatingSystem && `OS: ${record.operatingSystem}`}
+                    <br />
+                    {record.ram && `RAM: ${record.ram}`}
+                    <br />
+                    {record.storage && `Storage: ${record.storage}`}
+                    <br />
+                    {record.processor && `CPU: ${record.processor}`}
+                    <br />
                     {record.graphicsCard && `GPU: ${record.graphicsCard}`}
                   </Typography>
                 </TableCell>
@@ -383,30 +371,42 @@ const TechnicianDashboard = () => {
                   {record.repair_guide ? (
                     <Typography variant="body2" color="success.main">
                       ✅ Guide Generated
-                      <br/>
+                      <br />
                       <small>
                         {new Date(record.guide_generated_at).toLocaleString()}
                       </small>
                     </Typography>
                   ) : (
                     <Typography variant="body2" color="text.secondary">
-                      ⏳ No guide generated yet
+                      {generatingGuideId === record._id ? (
+                        <span>
+                          <span className="spinning">⏳</span> Generating
+                          guide...
+                        </span>
+                      ) : (
+                        <span>⏳ No guide generated yet</span>
+                      )}
                     </Typography>
                   )}
                 </TableCell>
                 <TableCell>
-                  <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                  <Box
+                    sx={{ display: "flex", gap: 1, flexDirection: "column" }}
+                  >
                     {!record.repair_guide ? (
-                      <Button 
-                        variant="contained" 
+                      <Button
+                        variant="contained"
                         size="small"
                         onClick={() => generateGuide(record._id)}
+                        disabled={generatingGuideId === record._id}
                       >
-                        Generate Guide
+                        {generatingGuideId === record._id
+                          ? "Generating..."
+                          : "Generate Guide"}
                       </Button>
                     ) : (
-                      <Button 
-                        variant="outlined" 
+                      <Button
+                        variant="outlined"
                         size="small"
                         onClick={() => handleViewGuide(record.repair_guide)}
                       >
@@ -422,17 +422,19 @@ const TechnicianDashboard = () => {
       </TableContainer>
 
       {/* Dialog for displaying formatted repair guide */}
-      <Dialog 
-        open={dialogOpen} 
+      <Dialog
+        open={dialogOpen}
         onClose={handleCloseDialog}
         maxWidth="md"
         fullWidth
         PaperProps={{
-          sx: { maxHeight: '80vh' }
+          sx: { maxHeight: "80vh" },
         }}
       >
         <DialogTitle>
-          <Typography component="div" variant = "h5">Repair Guide</Typography>
+          <Typography component="div" variant="h5">
+            Repair Guide
+          </Typography>
         </DialogTitle>
         <DialogContent dividers>
           <RepairGuideFormatter repairGuide={selectedGuide} />
