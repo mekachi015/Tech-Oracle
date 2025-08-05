@@ -24,6 +24,7 @@ import {
 
 // RepairGuideFormatter Component (extracted from the artifact above)
 const RepairGuideFormatter = ({ repairGuide }) => {
+  console.log('Repair Guide:', repairGuide);
   // Parse the repair guide text into structured sections
   const parseRepairGuide = (guide) => {
   if (!guide) {
@@ -59,7 +60,7 @@ const RepairGuideFormatter = ({ repairGuide }) => {
   }
 
   // Extract Steps
-  const stepsMatch = guide.match(/\*\*Step-by-Step Guide to Fix the Issue:\*\*\s*([\s\S]*?)(?=\*\*Step-by-Step Guide to Test)/);
+    const stepsMatch = guide.match(/\*\*Step-by-Step Guide to Fix the Issue:\*\*\s*([\s\S]*?)(?=\*\*Step-by-Step Guide to Testing:|\*\*Testing Guide:|\*\*Step-by-Step Guide to Test that the Issue is Resolved:|$)/);
   if (stepsMatch) {
     const stepsText = stepsMatch[1].trim();
     sections.stepByStep = stepsText
@@ -71,15 +72,33 @@ const RepairGuideFormatter = ({ repairGuide }) => {
   }
 
   // Extract Testing
-  const testingMatch = guide.match(/\*\*Step-by-Step Guide to Test the Fix:\*\*\s*([\s\S]*)/);
-  if (testingMatch) {
-    const testingText = testingMatch[1].trim();
-    sections.testing = testingText
-      .split('\n')
-      .map(item => item.replace(/^\d+\.\s*/, '').trim())
-      .filter(item => item !== '');
+  const testingMatch = guide.match(/\*\*Step-by-Step Guide to Testing the Issue is Resolved:\*\*\s*([\s\S]*?)(?=$)/);
+  if (!testingMatch) {
+      const testingMatchAlt = guide.match(/\*\*Testing Guide:\*\*\s*([\s\S]*?)(?=$)/);
+      if (!testingMatchAlt) {
+          const testingMatchAlt2 = guide.match(/\*\*Testing:\*\*\s*([\s\S]*?)(?=$)/);
+          if (testingMatchAlt2) {
+              const testingText = testingMatchAlt2[1].trim();
+              sections.testing = testingText
+                  .split('\n')
+                  .map(item => item.replace(/^\d+\.\s*/, '').trim())
+                  .filter(item => item !== '');
+          } else {
+              console.warn('Failed to match testing section');
+          }
+      } else {
+          const testingText = testingMatchAlt[1].trim();
+          sections.testing = testingText
+              .split('\n')
+              .map(item => item.replace(/^\d+\.\s*/, '').trim())
+              .filter(item => item !== '');
+      }
   } else {
-    console.warn('Failed to match testing section');
+      const testingText = testingMatch[1].trim();
+      sections.testing = testingText
+          .split('\n')
+          .map(item => item.replace(/^\d+\.\s*/, '').trim())
+          .filter(item => item !== '');
   }
 
   console.log('Final parsed sections:', sections);

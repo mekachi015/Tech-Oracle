@@ -177,19 +177,20 @@ def create_structured_prompt(device_info: RepairRecordInDB) -> str:
     Creates a structured prompt that will generate consistently formatted responses
     """
     prompt_template = """
-Please provide a repair guide in the following specific format:
+Create a detailed, step-by-step repair guide for the device issue described below. Please adhere strictly to the following formatting rules to ensure a structured and easily parsable response:
 
-**Complexity Level:**
-[COMPLEXITY_START]{complexity}[COMPLEXITY_END]
+1.  **Delimiters:** Use the specified start and end delimiters for each section of the guide. This is crucial for automated parsing.
+2.  **Lists:** Format lists of items (e.g., tools, repair steps, testing steps) as comma-separated values, with each item on a new line.
+3.  **Complexity:** Express the complexity of the repair on a scale of 1 to 10, where 1 indicates a very easy repair and 10 indicates an extremely complex repair.
 
-**Required Tools and Components:**
-[TOOLS_START]{tools}[TOOLS_END]
+Your response MUST include the following sections, each enclosed within its designated delimiters:
 
-**Step-by-Step Guide to Fixing the Issue:**
-[STEPS_START]{steps}[STEPS_END]
+*   **Complexity Level:** `[COMPLEXITY_START] <complexity_value> [COMPLEXITY_END]`
+*   **Required Tools and Components:** `[TOOLS_START] <tool_1>,\n<tool_2>,\n... [TOOLS_END]`
+*   **Step-by-Step Guide to Fixing the Issue:** `[STEPS_START] <step_1>,\n<step_2>,\n... [STEPS_END]`
+*   **Step-by-Step Guide to Testing:** `[TESTING_START] <test_1>,\n<test_2>,\n... [TESTING_END]`
 
-**Step-by-Step Guide to Testing:**
-[TESTING_START]{testing}[TESTING_END]
+Please ensure that each section is clearly defined and follows the specified format. The response should be comprehensive, covering all aspects of the repair process for the device described below:
 
 Device Information:
 - Brand: {brand}
