@@ -323,7 +323,9 @@ async def get_all_repair_records():
     records = []
     try:
         for record in repair_records_collection.find().sort("timestamp", -1):
-            records.append(RepairRecordInDB(**record))
+            record_dict = dict(record)
+            record_dict['_id'] = str(record_dict['_id'])  # Convert ObjectId to string
+            records.append(RepairRecordInDB(**record_dict))
         return records
     except Exception as e:
         print(f"Error fetching records from MongoDB: {e}")

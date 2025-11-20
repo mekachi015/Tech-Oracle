@@ -1,10 +1,10 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Card, 
-  CardContent, 
-  Typography, 
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
   Grid,
   Table,
   TableBody,
@@ -27,55 +27,78 @@ import { set } from 'zod';
 const RepairGuideFormatter = ({ repairGuide }) => {
   console.log('Repair Guide:', repairGuide);
   // Parse the repair guide text into structured sections
-const parseRepairGuide = (guide) => {
-  if (!guide) {
-    console.warn('Guide is empty or null');
-    return null;
-  }
 
-  const sections = {
-    complexity: '',
-    tools: [],
-    stepByStep: [],
-    testing: []
+  // const parseRepairGuide = (guide) => {
+  //   if (!guide) {
+  //     console.warn('Guide is empty or null');
+  //     return null;
+  //   }
+
+  //   const sections = {
+  //     complexity: '',
+  //     tools: [],
+  //     stepByStep: [],
+  //     testing: []
+  //   };
+
+  //   // Extract Complexity
+  //   const complexityMatch = guide.match(/\*\*Complexity Level:\*\* (.+?)(?=\n|$)/);
+  //   if (complexityMatch) {
+  //     sections.complexity = complexityMatch[1].trim();
+  //   }
+
+  //   // Extract Tools
+  //   const toolsMatch = guide.match(/\*\*Required Tools and Components:\*\*\n\n([\s\S]*?)(?=\n\n\*\*Step-by-Step)/);
+  //   if (toolsMatch) {
+  //     sections.tools = toolsMatch[1]
+  //       .split('\n')
+  //       .map(item => item.replace(/^\* /, '').trim())
+  //       .filter(Boolean);
+  //   }
+
+  //   // Extract Steps
+  //   const stepsMatch = guide.match(/\*\*Step-by-Step Guide to Fixing the Issue:\*\*\n\n([\s\S]*?)(?=\n\n\*\*Step-by-Step Guide to Testing)/);
+  //   if (stepsMatch) {
+  //     sections.stepByStep = stepsMatch[1]
+  //       .split('\n')
+  //       .map(item => item.replace(/^\d+\. /, '').trim())
+  //       .filter(Boolean);
+  //   }
+
+  //   // Extract Testing
+  //   const testingMatch = guide.match(/\*\*Step-by-Step Guide to Testing:\*\*\n\n([\s\S]*?)(?=\n\n\*\*Additional|$)/);
+  //   if (testingMatch) {
+  //     sections.testing = testingMatch[1]
+  //       .split('\n')
+  //       .map(item => item.replace(/^\d+\. /, '').trim())
+  //       .filter(Boolean);
+  //   }
+
+  //   console.log('Parsed sections:', sections);
+  //   return sections;
+  // };
+
+  const parseRepairGuide = (guide) => {
+    if (!guide) return null;
+
+    const extractBetween = (text, startTag, endTag) => {
+      const regex = new RegExp(`\\${startTag}([\\s\\S]*?)\\${endTag}`, "m");
+      const match = text.match(regex);
+      return match ? match[1].trim() : "";
+    };
+
+    const complexityRaw = extractBetween(guide, "[COMPLEXITY_START]", "[COMPLEXITY_END]");
+    const toolsRaw = extractBetween(guide, "[TOOLS_START]", "[TOOLS_END]");
+    const stepsRaw = extractBetween(guide, "[STEPS_START]", "[STEPS_END]");
+    const testingRaw = extractBetween(guide, "[TESTING_START]", "[TESTING_END]");
+
+    return {
+      complexity: complexityRaw || "N/A",
+      tools: toolsRaw ? toolsRaw.split(",").map(t => t.trim()).filter(Boolean) : [],
+      stepByStep: stepsRaw ? stepsRaw.split(",").map(s => s.trim()).filter(Boolean) : [],
+      testing: testingRaw ? testingRaw.split(",").map(t => t.trim()).filter(Boolean) : []
+    };
   };
-
-  // Extract Complexity
-  const complexityMatch = guide.match(/\*\*Complexity Level:\*\* (.+?)(?=\n|$)/);
-  if (complexityMatch) {
-    sections.complexity = complexityMatch[1].trim();
-  }
-
-  // Extract Tools
-  const toolsMatch = guide.match(/\*\*Required Tools and Components:\*\*\n\n([\s\S]*?)(?=\n\n\*\*Step-by-Step)/);
-  if (toolsMatch) {
-    sections.tools = toolsMatch[1]
-      .split('\n')
-      .map(item => item.replace(/^\* /, '').trim())
-      .filter(Boolean);
-  }
-
-  // Extract Steps
-  const stepsMatch = guide.match(/\*\*Step-by-Step Guide to Fixing the Issue:\*\*\n\n([\s\S]*?)(?=\n\n\*\*Step-by-Step Guide to Testing)/);
-  if (stepsMatch) {
-    sections.stepByStep = stepsMatch[1]
-      .split('\n')
-      .map(item => item.replace(/^\d+\. /, '').trim())
-      .filter(Boolean);
-  }
-
-  // Extract Testing
-  const testingMatch = guide.match(/\*\*Step-by-Step Guide to Testing:\*\*\n\n([\s\S]*?)(?=\n\n\*\*Additional|$)/);
-  if (testingMatch) {
-    sections.testing = testingMatch[1]
-      .split('\n')
-      .map(item => item.replace(/^\d+\. /, '').trim())
-      .filter(Boolean);
-  }
-
-  console.log('Parsed sections:', sections);
-  return sections;
-};
 
   const getComplexityColor = (complexity) => {
     const level = parseInt(complexity.match(/(\d+)/)?.[1] || '0');
@@ -99,7 +122,7 @@ const parseRepairGuide = (guide) => {
   }
 
   const sections = parseRepairGuide(repairGuide);
-  
+
   if (!sections) {
     return (
       <Alert severity="error">
@@ -239,10 +262,12 @@ const TechnicianDashboard = () => {
   const [error, setError] = useState(null);
   const [selectedGuide, setSelectedGuide] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const [generatingGuideId, setGeneratingGuide] = useState(null);
 
   useEffect(() => {
+    setMounted(true);
     fetchRepairRecords();
   }, []);
 
@@ -293,6 +318,10 @@ const TechnicianDashboard = () => {
     setSelectedGuide(null);
   };
 
+  if (!mounted) {
+    return null;
+  }
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', padding: 3 }}>
@@ -329,7 +358,9 @@ const TechnicianDashboard = () => {
             {repairRecords.map((record) => (
               <TableRow key={record._id}>
                 <TableCell>
-                  {new Date(record.timestamp).toLocaleDateString()}
+                  {record.timestamp
+                    ? new Date(record.timestamp).toLocaleDateString()
+                    : "N/A"}
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
@@ -373,7 +404,7 @@ const TechnicianDashboard = () => {
                       ✅ Guide Generated
                       <br />
                       <small>
-                        {new Date(record.guide_generated_at).toLocaleString()}
+                        {record.guide_generated_at ? new Date(record.guide_generated_at).toLocaleString() : 'N/A'}
                       </small>
                     </Typography>
                   ) : (
