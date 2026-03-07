@@ -1,11 +1,6 @@
 "use client"
-import dynamic from 'next/dynamic';
+import UserForm from "@/components/user-form";
 import ClientWrapper from "./clientWrapper";
-
-const UserForm = dynamic(() => import("@/components/user-form"), {
-  ssr: false,
-  loading: () => <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>
-});
 
 export default function Home() {
   return (

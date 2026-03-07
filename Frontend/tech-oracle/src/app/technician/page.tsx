@@ -52,8 +52,9 @@ export default function TechnicianPage() {
 
     if (!isAuthenticated) {
         return (
-            <ClientWrapper>
-                <Container maxWidth="sm" sx={{ py: { xs: 4, sm: 8 }, px: { xs: 2, sm: 3 } }}>
+            <MUIProvider>
+                <ClientWrapper>
+                    <Container maxWidth="sm" sx={{ py: { xs: 4, sm: 8 }, px: { xs: 2, sm: 3 } }}>
                     <Card elevation={3} sx={{ borderRadius: 3 }}>
                         <Box
                             sx={{
@@ -112,11 +113,13 @@ export default function TechnicianPage() {
                     </Card>
                 </Container>
             </ClientWrapper>
+            </MUIProvider>
         );
     }
 
     return (
-        <ClientWrapper>
+        <MUIProvider>
+            <ClientWrapper>
             <Box sx={{ position: 'relative' }}>
                 <Box sx={{ 
                     position: { xs: 'relative', sm: 'absolute' },
@@ -153,5 +156,6 @@ export default function TechnicianPage() {
                 <TechnicianDashboard />
             </Box>
         </ClientWrapper>
+        </MUIProvider>
     );
 }
