@@ -271,20 +271,45 @@ def create_structured_prompt(device_info: RepairRecordInDB) -> str:
     Creates a structured prompt that will generate consistently formatted responses
     """
     prompt_template = """
-Create a detailed, step-by-step repair guide for the device issue described below. Please adhere strictly to the following formatting rules to ensure a structured and easily parsable response:
+You are a technical repair guide generator. Create a detailed repair guide using EXACTLY this format with these EXACT delimiters.
 
-1.  **Delimiters:** Use the specified start and end delimiters for each section of the guide. This is crucial for automated parsing.
-2.  **Lists:** Format lists of items (e.g., tools, repair steps, testing steps) as comma-separated values, with each item on a new line.
-3.  **Complexity:** Express the complexity of the repair on a scale of 1 to 10, where 1 indicates a very easy repair and 10 indicates an extremely complex repair.
+CRITICAL FORMATTING RULES:
+1. Use EXACTLY these delimiters (including the asterisks): **COMPLEXITY_START**, **COMPLEXITY_END**, etc.
+2. Do NOT add any text before the first delimiter or after the last delimiter
+3. Put each item on a new line within sections
+4. Complexity must be a single number from 1-10
 
-Your response MUST include the following sections, each enclosed within its designated delimiters:
+You MUST respond in EXACTLY this format:
 
-*   **Complexity Level:** `[COMPLEXITY_START] <complexity_value> [COMPLEXITY_END]`
-*   **Required Tools and Components:** `[TOOLS_START] <tool_1>,\n<tool_2>,\n... [TOOLS_END]`
-*   **Step-by-Step Guide to Fixing the Issue:** `[STEPS_START] <step_1>,\n<step_2>,\n... [STEPS_END]`
-*   **Step-by-Step Guide to Testing:** `[TESTING_START] <test_1>,\n<test_2>,\n... [TESTING_END]`
+**COMPLEXITY_START**
+7
+**COMPLEXITY_END**
 
-Please ensure that each section is clearly defined and follows the specified format. The response should be comprehensive, covering all aspects of the repair process for the device described below:
+**TOOLS_START**
+Phillips screwdriver #0
+Plastic spudger
+Anti-static wrist strap
+Replacement display cable
+**TOOLS_END**
+
+**STEPS_START**
+Power off the device completely and disconnect all cables
+Remove the bottom panel using the Phillips screwdriver
+Disconnect the battery connector to prevent electrical damage
+Locate and carefully disconnect the display cable
+Reconnect the display cable firmly ensuring proper seating
+Reconnect the battery and test the display
+Reassemble the device if display works correctly
+**STEPS_END**
+
+**TESTING_START**
+Power on the device and check for display output
+Test display at different brightness levels
+Open and close the lid multiple times to verify cable connection
+Run a display diagnostic test if available
+**TESTING_END**
+
+Now create a repair guide for this device following the EXACT format above:
 
 Device Information:
 - Brand: {brand}
@@ -347,6 +372,18 @@ async def generate_guide_for_record(record_id: str, token_payload: dict = Depend
             {"role": "user", "content": prompt}
         ])
         generated_guide = response['message']['content']
+        
+        # Clean up the guide to ensure consistent formatting
+        # Remove any text before first delimiter and after last delimiter
+        import re
+        
+        # Find the first delimiter and last delimiter
+        first_delimiter = generated_guide.find('**COMPLEXITY_START**')
+        last_delimiter = generated_guide.rfind('**TESTING_END**')
+        
+        if first_delimiter != -1 and last_delimiter != -1:
+            # Extract only the content between first and last delimiter (inclusive)
+            generated_guide = generated_guide[first_delimiter:last_delimiter + len('**TESTING_END**')].strip()
         
         # Store the formatted guide
         update_data = {
