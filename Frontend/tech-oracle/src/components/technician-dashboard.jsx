@@ -39,66 +39,48 @@ const RepairGuideFormatter = ({ repairGuide }) => {
     testing: []
   };
 
-  // Extract Complexity
-  const complexityMatch = guide.match(/\*\*Complexity Level:\*\*\s*(.+)/);
+  // Extract Complexity using delimiter format
+  const complexityMatch = guide.match(/\*\*COMPLEXITY_START\*\*\s*(.*?)\s*\*\*COMPLEXITY_END\*\*/s);
   if (complexityMatch) {
-    sections.complexity = complexityMatch[1].trim();
+    sections.complexity = `${complexityMatch[1].trim()}/10`;
   } else {
     console.warn('Failed to match complexity section');
   }
 
-  // Extract Tools
-  const toolsMatch = guide.match(/\*\*Required Tools and Components:\*\*\s*([\s\S]*?)(?=\*\*Step-by-Step Guide)/);
+  // Extract Tools using delimiter format
+  const toolsMatch = guide.match(/\*\*TOOLS_START\*\*\s*([\s\S]*?)\s*\*\*TOOLS_END\*\*/);
   if (toolsMatch) {
     const toolsText = toolsMatch[1].trim();
     sections.tools = toolsText
-      .split('\n')
-      .map(item => item.replace(/^\d+\.\s*/, '').trim())
+      .split(',')
+      .map(item => item.trim())
       .filter(item => item !== '');
   } else {
     console.warn('Failed to match tools section');
   }
 
-  // Extract Steps
-    const stepsMatch = guide.match(/\*\*Step-by-Step Guide to Fix the Issue:\*\*\s*([\s\S]*?)(?=\*\*Step-by-Step Guide to Testing:|\*\*Testing Guide:|\*\*Step-by-Step Guide to Test that the Issue is Resolved:|$)/);
+  // Extract Steps using delimiter format
+  const stepsMatch = guide.match(/\*\*STEPS_START\*\*\s*([\s\S]*?)\s*\*\*STEPS_END\*\*/);
   if (stepsMatch) {
     const stepsText = stepsMatch[1].trim();
     sections.stepByStep = stepsText
       .split('\n')
       .map(item => item.replace(/^\d+\.\s*/, '').trim())
-      .filter(item => item !== '');
+      .filter(item => item !== '' && !item.startsWith('Identify the problem'));
   } else {
     console.warn('Failed to match steps section');
   }
 
-  // Extract Testing
-  const testingMatch = guide.match(/\*\*Step-by-Step Guide to Testing the Issue is Resolved:\*\*\s*([\s\S]*?)(?=$)/);
-  if (!testingMatch) {
-      const testingMatchAlt = guide.match(/\*\*Testing Guide:\*\*\s*([\s\S]*?)(?=$)/);
-      if (!testingMatchAlt) {
-          const testingMatchAlt2 = guide.match(/\*\*Testing:\*\*\s*([\s\S]*?)(?=$)/);
-          if (testingMatchAlt2) {
-              const testingText = testingMatchAlt2[1].trim();
-              sections.testing = testingText
-                  .split('\n')
-                  .map(item => item.replace(/^\d+\.\s*/, '').trim())
-                  .filter(item => item !== '');
-          } else {
-              console.warn('Failed to match testing section');
-          }
-      } else {
-          const testingText = testingMatchAlt[1].trim();
-          sections.testing = testingText
-              .split('\n')
-              .map(item => item.replace(/^\d+\.\s*/, '').trim())
-              .filter(item => item !== '');
-      }
+  // Extract Testing using delimiter format
+  const testingMatch = guide.match(/\*\*TESTING_START\*\*\s*([\s\S]*?)\s*\*\*TESTING_END\*\*/);
+  if (testingMatch) {
+    const testingText = testingMatch[1].trim();
+    sections.testing = testingText
+      .split('\n')
+      .map(item => item.replace(/^Test\s*\d+:\s*/i, '').trim())
+      .filter(item => item !== '');
   } else {
-      const testingText = testingMatch[1].trim();
-      sections.testing = testingText
-          .split('\n')
-          .map(item => item.replace(/^\d+\.\s*/, '').trim())
-          .filter(item => item !== '');
+    console.warn('Failed to match testing section');
   }
 
   console.log('Final parsed sections:', sections);
@@ -140,7 +122,7 @@ const RepairGuideFormatter = ({ repairGuide }) => {
     backgroundColor: 'white',
     border: '1px solid #e0e0e0',
     borderRadius: '8px',
-    padding: '20px',
+    padding: '16px',
     marginBottom: '16px',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
   };
@@ -149,8 +131,8 @@ const RepairGuideFormatter = ({ repairGuide }) => {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    marginBottom: '16px',
-    fontSize: '18px',
+    marginBottom: '12px',
+    fontSize: '16px',
     fontWeight: 'bold',
     color: '#333'
   };
@@ -159,18 +141,18 @@ const RepairGuideFormatter = ({ repairGuide }) => {
     display: 'inline-block',
     backgroundColor: color,
     color: 'white',
-    padding: '8px 16px',
+    padding: '6px 12px',
     borderRadius: '20px',
-    fontSize: '14px',
+    fontSize: '13px',
     fontWeight: 'bold'
   });
 
   const stepStyle = {
     display: 'flex',
     alignItems: 'flex-start',
-    gap: '12px',
-    marginBottom: '12px',
-    padding: '8px 0'
+    gap: '10px',
+    marginBottom: '10px',
+    padding: '6px 0'
   };
 
   const stepNumberStyle = {
@@ -206,9 +188,9 @@ const RepairGuideFormatter = ({ repairGuide }) => {
           <span>🔧</span>
           <span>Required Tools & Components</span>
         </div>
-        <ul style={{ margin: 0, paddingLeft: '20px' }}>
+        <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px' }}>
           {sections.tools.map((tool, index) => (
-            <li key={index} style={{ marginBottom: '8px', lineHeight: '1.5' }}>
+            <li key={index} style={{ marginBottom: '6px', lineHeight: '1.6', wordBreak: 'break-word' }}>
               {tool}
             </li>
           ))}
@@ -227,7 +209,7 @@ const RepairGuideFormatter = ({ repairGuide }) => {
               <div style={stepNumberStyle}>
                 {index + 1}
               </div>
-              <div style={{ flex: 1, lineHeight: '1.5', fontSize: '14px' }}>
+              <div style={{ flex: 1, lineHeight: '1.6', fontSize: '13px', wordBreak: 'break-word' }}>
                 {step}
               </div>
             </div>
@@ -250,7 +232,7 @@ const RepairGuideFormatter = ({ repairGuide }) => {
               }}>
                 {index + 1}
               </div>
-              <div style={{ flex: 1, lineHeight: '1.5', fontSize: '14px' }}>
+              <div style={{ flex: 1, lineHeight: '1.6', fontSize: '13px', wordBreak: 'break-word' }}>
                 {test}
               </div>
             </div>
@@ -325,8 +307,8 @@ const TechnicianDashboard = () => {
   }
 
   return (
-    <Box sx={{ padding: 3 }}>
-      <Typography variant="h4" gutterBottom>
+    <Box sx={{ padding: { xs: 2, sm: 3 } }}>
+      <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
         Technician Dashboard
       </Typography>
       
@@ -336,90 +318,193 @@ const TechnicianDashboard = () => {
         </Alert>
       )}
 
-      <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 650 }}>
-          <TableHead>
-            <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Brand & Model</TableCell>
-              <TableCell>Issue</TableCell>
-              <TableCell>Specifications</TableCell>
-              <TableCell>Repair Guide Status</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {repairRecords.map((record) => (
-              <TableRow key={record._id}>
-                <TableCell>
-                  {new Date(record.timestamp).toLocaleDateString()}
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2">
-                    Brand: {record.deviceBrand}<br/>
-                    Model: {record.deviceModel}<br/>
-                    {record.deviceModelNumber && `Model #: ${record.deviceModelNumber}`}<br/>
-                    {record.serialNumber && `Serial #: ${record.serialNumber}`}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2">
-                    {record.deviceIssue}
-                    {record.additionalInfo && (
-                      <><br/><em>Additional info: {record.additionalInfo}</em></>
+      {repairRecords.length === 0 && !loading && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          No repair records found. Waiting for customer submissions.
+        </Alert>
+      )}
+
+      {/* Desktop Table View */}
+      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+        <TableContainer component={Paper}>
+          <Table sx={{ minWidth: 650 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>Date</TableCell>
+                <TableCell>Brand & Model</TableCell>
+                <TableCell>Issue</TableCell>
+                <TableCell>Specifications</TableCell>
+                <TableCell>Repair Guide Status</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {repairRecords.map((record) => (
+                <TableRow key={record._id}>
+                  <TableCell>
+                    {new Date(record.timestamp).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      Brand: {record.deviceBrand}<br/>
+                      Model: {record.deviceModel}<br/>
+                      {record.deviceModelNumber && `Model #: ${record.deviceModelNumber}`}<br/>
+                      {record.serialNumber && `Serial #: ${record.serialNumber}`}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {record.deviceIssue}
+                      {record.additionalInfo && (
+                        <><br/><em>Additional info: {record.additionalInfo}</em></>
+                      )}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {record.operatingSystem && `OS: ${record.operatingSystem}`}<br/>
+                      {record.ram && `RAM: ${record.ram}`}<br/>
+                      {record.storage && `Storage: ${record.storage}`}<br/>
+                      {record.processor && `CPU: ${record.processor}`}<br/>
+                      {record.graphicsCard && `GPU: ${record.graphicsCard}`}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    {record.repair_guide ? (
+                      <Typography variant="body2" color="success.main">
+                        ✅ Guide Generated
+                        <br/>
+                        <small>
+                          {new Date(record.guide_generated_at).toLocaleString()}
+                        </small>
+                      </Typography>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        ⏳ No guide generated yet
+                      </Typography>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                      {!record.repair_guide ? (
+                        <Button 
+                          variant="contained" 
+                          size="small"
+                          onClick={() => generateGuide(record._id)}
+                        >
+                          Generate Guide
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="outlined" 
+                          size="small"
+                          onClick={() => handleViewGuide(record.repair_guide)}
+                        >
+                          View Guide
+                        </Button>
+                      )}
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+
+      {/* Mobile Card View */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        {repairRecords.map((record) => (
+          <Card key={record._id} sx={{ mb: 2, border: '1px solid #e0e0e0' }}>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                {new Date(record.timestamp).toLocaleDateString()}
+              </Typography>
+              
+              <Typography variant="h6" gutterBottom sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                {record.deviceBrand} {record.deviceModel}
+              </Typography>
+              
+              {record.deviceModelNumber && (
+                <Typography variant="body2" color="text.secondary">
+                  Model #: {record.deviceModelNumber}
+                </Typography>
+              )}
+              
+              {record.serialNumber && (
+                <Typography variant="body2" color="text.secondary">
+                  Serial #: {record.serialNumber}
+                </Typography>
+              )}
+              
+              <Box sx={{ mt: 2, mb: 2, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+                  Issue:
+                </Typography>
+                <Typography variant="body2">
+                  {record.deviceIssue}
+                </Typography>
+                {record.additionalInfo && (
+                  <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
+                    Additional info: {record.additionalInfo}
                   </Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2">
+                )}
+              </Box>
+              
+              {(record.operatingSystem || record.ram || record.storage || record.processor || record.graphicsCard) && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+                    Specifications:
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
                     {record.operatingSystem && `OS: ${record.operatingSystem}`}<br/>
                     {record.ram && `RAM: ${record.ram}`}<br/>
                     {record.storage && `Storage: ${record.storage}`}<br/>
                     {record.processor && `CPU: ${record.processor}`}<br/>
                     {record.graphicsCard && `GPU: ${record.graphicsCard}`}
                   </Typography>
-                </TableCell>
-                <TableCell>
-                  {record.repair_guide ? (
-                    <Typography variant="body2" color="success.main">
-                      ✅ Guide Generated
-                      <br/>
-                      <small>
-                        {new Date(record.guide_generated_at).toLocaleString()}
-                      </small>
+                </Box>
+              )}
+              
+              <Box sx={{ mb: 2 }}>
+                {record.repair_guide ? (
+                  <Typography variant="body2" color="success.main" sx={{ fontWeight: 500 }}>
+                    ✅ Guide Generated
+                    <br/>
+                    <Typography variant="caption" component="span">
+                      {new Date(record.guide_generated_at).toLocaleString()}
                     </Typography>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      ⏳ No guide generated yet
-                    </Typography>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-                    {!record.repair_guide ? (
-                      <Button 
-                        variant="contained" 
-                        size="small"
-                        onClick={() => generateGuide(record._id)}
-                      >
-                        Generate Guide
-                      </Button>
-                    ) : (
-                      <Button 
-                        variant="outlined" 
-                        size="small"
-                        onClick={() => handleViewGuide(record.repair_guide)}
-                      >
-                        View Guide
-                      </Button>
-                    )}
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    ⏳ No guide generated yet
+                  </Typography>
+                )}
+              </Box>
+              
+              <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                {!record.repair_guide ? (
+                  <Button 
+                    variant="contained" 
+                    fullWidth
+                    onClick={() => generateGuide(record._id)}
+                  >
+                    Generate Guide
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outlined" 
+                    fullWidth
+                    onClick={() => handleViewGuide(record.repair_guide)}
+                  >
+                    View Guide
+                  </Button>
+                )}
+              </Box>
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
 
       {/* Dialog for displaying formatted repair guide */}
       <Dialog 
@@ -427,18 +512,25 @@ const TechnicianDashboard = () => {
         onClose={handleCloseDialog}
         maxWidth="md"
         fullWidth
+        fullScreen={false}
         PaperProps={{
-          sx: { maxHeight: '80vh' }
+          sx: { 
+            maxHeight: '90vh',
+            m: { xs: 1, sm: 2 },
+            maxWidth: { xs: 'calc(100% - 16px)', sm: '600px' }
+          }
         }}
       >
-        <DialogTitle>
-          <Typography component="div" variant = "h5">Repair Guide</Typography>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography component="div" variant="h5" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
+            Repair Guide
+          </Typography>
         </DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ p: { xs: 2, sm: 3 } }}>
           <RepairGuideFormatter repairGuide={selectedGuide} />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog} color="primary">
+        <DialogActions sx={{ p: { xs: 1.5, sm: 2 } }}>
+          <Button onClick={handleCloseDialog} color="primary" fullWidth={false}>
             Close
           </Button>
         </DialogActions>
