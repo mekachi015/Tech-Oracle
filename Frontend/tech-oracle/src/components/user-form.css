@@ -1,0 +1,323 @@
+/* Container */
+.form-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Header */
+.form-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 30px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+}
+
+.form-header h1 {
+    margin: 0 0 10px 0;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.form-header p {
+    margin: 0;
+    font-size: 1.1rem;
+    opacity: 0.95;
+}
+
+/* Step Indicator */
+.step-indicator {
+    background: #f5f5f5;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.step-indicator p {
+    margin: 0;
+    font-weight: 600;
+    color: #333;
+    font-size: 1rem;
+}
+
+/* Form */
+.repair-form {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 25px;
+    margin-bottom: 20px;
+}
+
+.form-content {
+    margin-bottom: 30px;
+}
+
+/* Form Sections */
+.form-section h2 {
+    font-size: 1.5rem;
+    color: #333;
+    margin: 0 0 10px 0;
+    font-weight: 600;
+}
+
+.form-section > p {
+    color: #666;
+    font-size: 0.9rem;
+    margin: 0 0 20px 0;
+}
+
+/* Form Groups */
+.form-group {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+    font-size: 0.95rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.form-group input[type="file"] {
+    padding: 10px;
+    border: 2px dashed #ccc;
+    background: #f9f9f9;
+    cursor: pointer;
+}
+
+.form-group input[type="file"]:hover {
+    border-color: #667eea;
+    background: #f0f0f0;
+}
+
+/* File List */
+.file-list {
+    margin-top: 15px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 6px;
+}
+
+.file-list p {
+    margin: 0 0 10px 0;
+    font-weight: 500;
+    color: #333;
+}
+
+.file-list ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.file-list li {
+    margin-bottom: 5px;
+    color: #555;
+}
+
+/* Buttons */
+.form-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.btn {
+    flex: 1;
+    padding: 14px 24px;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: #f5f5f5;
+    color: #333;
+    border: 1px solid #ddd;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: #e8e8e8;
+}
+
+/* Messages */
+.loading-message,
+.error-message,
+.success-message {
+    padding: 15px 20px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.loading-message {
+    background: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #90caf9;
+}
+
+.error-message {
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #ef5350;
+}
+
+.error-message p {
+    margin: 0;
+}
+
+.success-message {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #66bb6a;
+}
+
+.success-message p {
+    margin: 0;
+    font-weight: 500;
+}
+
+/* Footer Link */
+.footer-link {
+    text-align: center;
+    padding: 15px;
+}
+
+.footer-link p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.footer-link a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.footer-link a:hover {
+    text-decoration: underline;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .form-container {
+        padding: 15px;
+    }
+
+    .form-header {
+        padding: 20px 15px;
+    }
+
+    .form-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .form-header p {
+        font-size: 0.95rem;
+    }
+
+    .repair-form {
+        padding: 20px;
+    }
+
+    .form-section h2 {
+        font-size: 1.3rem;
+    }
+
+    .form-buttons {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .form-header h1 {
+        font-size: 1.3rem;
+    }
+
+    .form-header p {
+        font-size: 0.85rem;
+    }
+
+    .step-indicator p {
+        font-size: 0.9rem;
+    }
+
+    .form-section h2 {
+        font-size: 1.2rem;
+    }
+
+    .form-group label {
+        font-size: 0.9rem;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 0.95rem;
+        padding: 10px;
+    }
+}
