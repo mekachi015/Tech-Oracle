@@ -153,7 +153,7 @@ export default function TechnicianPage() {
                     p: { xs: 2, sm: 0 },
                     flexWrap: 'wrap'
                 }}>
-                    <Link href="/" passHref legacyBehavior>
+                    <Link href="/" style={{ textDecoration: 'none' }}>
                         <Button
                             variant="outlined"
                             color="primary"

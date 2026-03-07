@@ -40,9 +40,16 @@ const RepairGuideFormatter = ({ repairGuide }) => {
   };
 
   // Extract Complexity using delimiter format
-  const complexityMatch = guide.match(/\*\*COMPLEXITY_START\*\*\s*(.*?)\s*\*\*COMPLEXITY_END\*\*/s);
+  const complexityMatch = guide.match(/\*\*COMPLEXITY_START\*\*\s*([\s\S]*?)\s*\*\*COMPLEXITY_END\*\*/);
   if (complexityMatch) {
-    sections.complexity = `${complexityMatch[1].trim()}/10`;
+    const complexityValue = complexityMatch[1].trim();
+    // Extract just the number if there's extra text
+    const numMatch = complexityValue.match(/(\d+)/);
+    if (numMatch) {
+      sections.complexity = `${numMatch[1]}/10`;
+    } else {
+      sections.complexity = complexityValue;
+    }
   } else {
     console.warn('Failed to match complexity section');
   }
@@ -51,10 +58,11 @@ const RepairGuideFormatter = ({ repairGuide }) => {
   const toolsMatch = guide.match(/\*\*TOOLS_START\*\*\s*([\s\S]*?)\s*\*\*TOOLS_END\*\*/);
   if (toolsMatch) {
     const toolsText = toolsMatch[1].trim();
+    // Split by newlines instead of commas for better parsing
     sections.tools = toolsText
-      .split(',')
-      .map(item => item.trim())
-      .filter(item => item !== '');
+      .split('\n')
+      .map(item => item.replace(/^[-•*]\s*/, '').trim()) // Remove bullet points
+      .filter(item => item !== '' && item.length > 2);
   } else {
     console.warn('Failed to match tools section');
   }
@@ -65,8 +73,8 @@ const RepairGuideFormatter = ({ repairGuide }) => {
     const stepsText = stepsMatch[1].trim();
     sections.stepByStep = stepsText
       .split('\n')
-      .map(item => item.replace(/^\d+\.\s*/, '').trim())
-      .filter(item => item !== '' && !item.startsWith('Identify the problem'));
+      .map(item => item.replace(/^(\d+\.|\d+\)|-|•|\\*)\s*/, '').trim()) // Remove numbered lists, bullets
+      .filter(item => item !== '' && item.length > 3);
   } else {
     console.warn('Failed to match steps section');
   }
@@ -77,8 +85,8 @@ const RepairGuideFormatter = ({ repairGuide }) => {
     const testingText = testingMatch[1].trim();
     sections.testing = testingText
       .split('\n')
-      .map(item => item.replace(/^Test\s*\d+:\s*/i, '').trim())
-      .filter(item => item !== '');
+      .map(item => item.replace(/^(Test\s*\d+:?|\d+\.|\d+\)|-|•|\\*)\s*/i, '').trim()) // Remove test labels, numbers, bullets
+      .filter(item => item !== '' && item.length > 3);
   } else {
     console.warn('Failed to match testing section');
   }
@@ -249,6 +257,7 @@ const TechnicianDashboard = () => {
   const [error, setError] = useState(null);
   const [selectedGuide, setSelectedGuide] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [generatingGuideId, setGeneratingGuideId] = useState(null);
 
   useEffect(() => {
     fetchRepairRecords();
@@ -289,6 +298,7 @@ const TechnicianDashboard = () => {
   };
 
   const generateGuide = async (recordId) => {
+    setGeneratingGuideId(recordId);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const token = sessionStorage.getItem('technicianToken');
@@ -316,6 +326,8 @@ const TechnicianDashboard = () => {
     } catch (error) {
       console.error('Error generating guide:', error);
       setError('Failed to generate repair guide. Please try again.');
+    } finally {
+      setGeneratingGuideId(null);
     }
   };
 
@@ -422,8 +434,10 @@ const TechnicianDashboard = () => {
                           variant="contained" 
                           size="small"
                           onClick={() => generateGuide(record._id)}
+                          disabled={generatingGuideId === record._id}
+                          startIcon={generatingGuideId === record._id ? <CircularProgress size={16} color="inherit" /> : null}
                         >
-                          Generate Guide
+                          {generatingGuideId === record._id ? 'Generating...' : 'Generate Guide'}
                         </Button>
                       ) : (
                         <Button 
@@ -519,8 +533,10 @@ const TechnicianDashboard = () => {
                     variant="contained" 
                     fullWidth
                     onClick={() => generateGuide(record._id)}
+                    disabled={generatingGuideId === record._id}
+                    startIcon={generatingGuideId === record._id ? <CircularProgress size={20} color="inherit" /> : null}
                   >
-                    Generate Guide
+                    {generatingGuideId === record._id ? 'Generating...' : 'Generate Guide'}
                   </Button>
                 ) : (
                   <Button 
