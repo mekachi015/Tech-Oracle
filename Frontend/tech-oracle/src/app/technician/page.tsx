@@ -31,8 +31,8 @@ export default function TechnicianPage() {
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        // Simple password check - you can change this to your preferred password
-        const TECHNICIAN_PASSWORD = 'techAdmin123'; // Change this to your desired password
+        // Password from environment variable
+        const TECHNICIAN_PASSWORD = process.env.NEXT_PUBLIC_TECHNICIAN_PASSWORD || 'techAdmin123';
         
         if (password === TECHNICIAN_PASSWORD) {
             setIsAuthenticated(true);
@@ -106,7 +106,7 @@ export default function TechnicianPage() {
                                 </Button>
 
                                 <Typography variant="caption" display="block" sx={{ mt: 3, textAlign: 'center', color: 'text.secondary', fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
-                                    Default password: techAdmin123
+                                    Authorized personnel only
                                 </Typography>
                             </form>
                         </CardContent>

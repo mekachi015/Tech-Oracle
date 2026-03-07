@@ -335,7 +335,8 @@ const UserForm = () => {
                     serialNumber: formData.serialNumber,
                 };
 
-                const response = await fetch('http://localhost:8000/add_repairs', {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+                const response = await fetch(`${apiUrl}/add_repairs`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

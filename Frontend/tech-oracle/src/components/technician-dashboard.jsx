@@ -258,7 +258,8 @@ const TechnicianDashboard = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:8000/api/repair_records');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${apiUrl}/api/repair_records`);
       if (!response.ok) {
         throw new Error('Failed to fetch repair records');
       }
@@ -274,7 +275,8 @@ const TechnicianDashboard = () => {
 
   const generateGuide = async (recordId) => {
     try {
-      const response = await fetch(`http://localhost:8000/generate_guide_for_record/${recordId}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${apiUrl}/generate_guide_for_record/${recordId}`, {
         method: 'POST'
       });
       if (!response.ok) {
