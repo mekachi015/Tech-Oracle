@@ -1,8 +1,10 @@
 # main.py
 import datetime
+from datetime import timedelta
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
 
 from pymongo import MongoClient
@@ -13,8 +15,28 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field, BeforeValidator, ConfigDict
 from typing import Optional, Annotated, List
 
+import jwt
+import bcrypt
+
 # Load environment variables from .env file
 load_dotenv()
+
+# --- JWT Configuration ---
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 hours
+
+security = HTTPBearer()
+
+# Technician password from environment
+TECHNICIAN_PASSWORD_HASH = os.getenv("TECHNICIAN_PASSWORD_HASH")
+if not TECHNICIAN_PASSWORD_HASH:
+    # Generate a hash for the default password (only for development)
+    default_password = os.getenv("TECHNICIAN_PASSWORD", "techAdmin123")
+    TECHNICIAN_PASSWORD_HASH = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    print(f"⚠️  WARNING: Using default password. Set TECHNICIAN_PASSWORD_HASH in .env for production!")
+
+# --- End JWT Configuration ---
 
 app = FastAPI(
     title="Tech Oracle AI Assistant",
@@ -55,6 +77,58 @@ print(f"Connected to MongoDB: {MONGO_DB_URL}, Database: {DB_NAME}, Collection: {
 
 # Custom type for ObjectId to string conversion for Pydantic
 PyObjectId = Annotated[str, BeforeValidator(str)]
+
+# --- Authentication Models ---
+class LoginRequest(BaseModel):
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+# --- Authentication Helper Functions ---
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plain password against a hashed password"""
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Create a JWT access token"""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.datetime.now(datetime.timezone.utc) + expires_delta
+    else:
+        expire = datetime.datetime.now(datetime.timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Dependency to verify JWT token"""
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username != "technician":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+# --- End Authentication ---
 
 class DeviceRepairRequest(BaseModel):
     """
@@ -138,6 +212,24 @@ async def read_root():
     A simple root endpoint to verify the API is running.
     """
     return {"message": "Welcome to Tech Oracle Repair Assistant API!"}
+
+@app.post("/api/auth/login", response_model=TokenResponse, summary="Technician login")
+async def login(credentials: LoginRequest):
+    """
+    Authenticate technician and return JWT access token.
+    """
+    if not verify_password(credentials.password, TECHNICIAN_PASSWORD_HASH):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token = create_access_token(
+        data={"sub": "technician"},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    return TokenResponse(access_token=access_token)
 
 @app.get("/generate", response_model=dict, summary="Generate a general AI response")
 async def generate_response(prompt: str):
@@ -234,7 +326,7 @@ Device Information:
         specs=specs,
     )
 @app.post("/generate_guide_for_record/{record_id}", response_model=RepairRecordInDB, summary="Generate and save an AI repair guide for an existing record")
-async def generate_guide_for_record(record_id: str):
+async def generate_guide_for_record(record_id: str, token_payload: dict = Depends(verify_token)):
     if not ObjectId.is_valid(record_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid record ID format")
 
@@ -285,9 +377,10 @@ async def generate_guide_for_record(record_id: str):
 
 
 @app.get("/api/repair_records", response_model=List[RepairRecordInDB], summary="Retrieve all saved repair records")
-async def get_all_repair_records():
+async def get_all_repair_records(token_payload: dict = Depends(verify_token)):
     """
     Retrieves all previously saved device repair requests and their generated guides from MongoDB.
+    Requires authentication.
     """
     records = []
     try:
@@ -300,9 +393,10 @@ async def get_all_repair_records():
 
 
 @app.get("/api/repair_records/{record_id}", response_model=RepairRecordInDB, summary="Retrieve a single repair record by ID")
-async def get_repair_record(record_id: str):
+async def get_repair_record(record_id: str, token_payload: dict = Depends(verify_token)):
     """
     Retrieves a single repair record by its unique ID from MongoDB.
+    Requires authentication.
     """
     if not ObjectId.is_valid(record_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid record ID format")

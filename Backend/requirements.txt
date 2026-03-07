@@ -4,3 +4,6 @@ ollama
 python-dotenv
 requests
 pymongo
+PyJWT
+bcrypt
+python-multipart
