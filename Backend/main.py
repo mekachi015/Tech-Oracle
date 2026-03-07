@@ -26,6 +26,8 @@ app = FastAPI(
 origins = [
     "http://localhost:3000",  # Your React frontend's development URL
     "http://127.0.0.1:3000",
+    "http://localhost:3001",  # Alternative port
+    "http://127.0.0.1:3001",
     # Add your production frontend URL(s) here when you deploy
     # "https://your-frontend-domain.com",
 ]
