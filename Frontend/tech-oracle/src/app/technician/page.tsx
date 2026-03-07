@@ -20,33 +20,53 @@ export default function TechnicianPage() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    // Check if already authenticated in session
+    // Check if already authenticated with valid token
     useEffect(() => {
-        const authStatus = sessionStorage.getItem('technicianAuth');
-        if (authStatus === 'true') {
+        const token = sessionStorage.getItem('technicianToken');
+        if (token) {
+            // Token exists, assume authenticated (dashboard will verify on API calls)
             setIsAuthenticated(true);
         }
     }, []);
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Password from environment variable
-        const TECHNICIAN_PASSWORD = process.env.NEXT_PUBLIC_TECHNICIAN_PASSWORD || 'techAdmin123';
-        
-        if (password === TECHNICIAN_PASSWORD) {
+        setLoading(true);
+        setError('');
+
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+            const response = await fetch(`${apiUrl}/api/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ password }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Invalid password');
+            }
+
+            const data = await response.json();
+            // Store JWT token in sessionStorage
+            sessionStorage.setItem('technicianToken', data.access_token);
             setIsAuthenticated(true);
-            sessionStorage.setItem('technicianAuth', 'true');
-            setError('');
-        } else {
-            setError('Invalid password. Please try again.');
             setPassword('');
+        } catch (err: any) {
+            setError(err.message || 'Authentication failed. Please try again.');
+            setPassword('');
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleLogout = () => {
         setIsAuthenticated(false);
-        sessionStorage.removeItem('technicianAuth');
+        sessionStorage.removeItem('technicianToken');
         setPassword('');
     };
 
@@ -97,12 +117,13 @@ export default function TechnicianPage() {
                                     variant="contained"
                                     fullWidth
                                     size="large"
+                                    disabled={loading || !password}
                                     sx={{
                                         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                                         py: { xs: 1.2, sm: 1.5 },
                                     }}
                                 >
-                                    Access Dashboard
+                                    {loading ? 'Authenticating...' : 'Access Dashboard'}
                                 </Button>
 
                                 <Typography variant="caption" display="block" sx={{ mt: 3, textAlign: 'center', color: 'text.secondary', fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>

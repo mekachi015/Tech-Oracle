@@ -259,7 +259,22 @@ const TechnicianDashboard = () => {
     setError(null);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const response = await fetch(`${apiUrl}/api/repair_records`);
+      const token = sessionStorage.getItem('technicianToken');
+      
+      const response = await fetch(`${apiUrl}/api/repair_records`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.status === 401) {
+        // Token expired or invalid - redirect to login
+        sessionStorage.removeItem('technicianToken');
+        window.location.reload();
+        return;
+      }
+      
       if (!response.ok) {
         throw new Error('Failed to fetch repair records');
       }
@@ -276,9 +291,23 @@ const TechnicianDashboard = () => {
   const generateGuide = async (recordId) => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const token = sessionStorage.getItem('technicianToken');
+      
       const response = await fetch(`${apiUrl}/generate_guide_for_record/${recordId}`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
+      
+      if (response.status === 401) {
+        // Token expired or invalid - redirect to login
+        sessionStorage.removeItem('technicianToken');
+        window.location.reload();
+        return;
+      }
+      
       if (!response.ok) {
         throw new Error('Failed to generate repair guide');
       }
