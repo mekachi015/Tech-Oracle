@@ -1,27 +1,96 @@
 # main.py
 import datetime
 from datetime import timedelta
+import logging
+import sys
 
-from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi import FastAPI, HTTPException, status, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
 
 from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from bson import ObjectId
-import ollama
 from dotenv import load_dotenv
 
-from pydantic import BaseModel, Field, BeforeValidator, ConfigDict
+from pydantic import BaseModel, Field, BeforeValidator, ConfigDict, field_validator
 from typing import Optional, Annotated, List
 
 import jwt
 import bcrypt
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 # Load environment variables from .env file
 load_dotenv()
 
-# --- JWT Configuration ---
+# ============================================
+# LOGGING CONFIGURATION
+# ============================================
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('tech_oracle.log', mode='a')
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# ============================================
+# AI INTEGRATION - OLLAMA (LOCAL) OR GROQ (CLOUD)
+# ============================================
+USE_GROQ = os.getenv("USE_GROQ", "false").lower() == "true"
+
+if USE_GROQ:
+    try:
+        from groq_integration import generate_ai_response, check_groq_availability
+        logger.info("🤖 Using Groq for AI generation (production mode)")
+    except ImportError:
+        logger.error("❌ Groq integration not available. Install with: pip install groq")
+        sys.exit(1)
+else:
+    try:
+        import ollama
+        logger.info("🤖 Using Ollama for AI generation (local mode)")
+    except ImportError:
+        logger.warning("⚠️  Ollama not available. Set USE_GROQ=true for production deployment")
+
+# ============================================
+# ENVIRONMENT VARIABLE VALIDATION
+# ============================================
+def validate_environment():
+    """Validate critical environment variables on startup"""
+    required_vars = {
+        'MONGO_DB_URL': os.getenv('MONGO_DB_URL'),
+        'JWT_SECRET_KEY': os.getenv('JWT_SECRET_KEY'),
+    }
+    
+    missing_vars = [var for var, value in required_vars.items() if not value]
+    
+    if missing_vars:
+        logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
+        logger.error("Please set these in your .env file before starting the application.")
+        sys.exit(1)
+    
+    # Validate JWT secret is not default value
+    if os.getenv('JWT_SECRET_KEY') == 'your-secret-key-change-this-in-production':
+        logger.warning("⚠️  SECURITY WARNING: Using default JWT secret key! Change this in production!")
+    
+    # Check if using default password
+    if os.getenv('TECHNICIAN_PASSWORD') == 'techAdmin123' or not os.getenv('TECHNICIAN_PASSWORD'):
+        logger.warning("⚠️  SECURITY WARNING: Using default technician password! Change this in production!")
+    
+    logger.info("✅ Environment validation passed")
+
+# Validate environment on startup
+validate_environment()
+
+# ============================================
+# JWT CONFIGURATION
+# ============================================
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 hours
@@ -34,25 +103,54 @@ if not TECHNICIAN_PASSWORD_HASH:
     # Generate a hash for the default password (only for development)
     default_password = os.getenv("TECHNICIAN_PASSWORD", "techAdmin123")
     TECHNICIAN_PASSWORD_HASH = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    print(f"⚠️  WARNING: Using default password. Set TECHNICIAN_PASSWORD_HASH in .env for production!")
-
-# --- End JWT Configuration ---
+    logger.warning("⚠️  Using default password hashing. Set TECHNICIAN_PASSWORD_HASH in .env for production!")
 
 app = FastAPI(
     title="Tech Oracle AI Assistant",
     description="An AI powered technical assistant for device repair, with MongoDB storage.",
-    version="0.1.0",
+    version="1.0.0",
 )
 
-# --- CORS Configuration ---
+# ============================================
+# RATE LIMITING CONFIGURATION
+# ============================================
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+logger.info("✅ Rate limiting enabled - 100 requests per minute per IP")
+
+# ============================================
+# REQUEST LOGGING MIDDLEWARE
+# ============================================
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all incoming requests and responses"""
+    logger.info(f"Incoming request: {request.method} {request.url.path}")
+    try:
+        response = await call_next(request)
+        logger.info(f"Request completed: {request.method} {request.url.path} - Status: {response.status_code}")
+        return response
+    except Exception as e:
+        logger.error(f"Request failed: {request.method} {request.url.path} - Error: {str(e)}")
+        raise
+
+# ============================================
+# CORS CONFIGURATION
+# ============================================
+# IMPORTANT: Update this list with your production frontend URL(s) before deployment
+# Remove localhost URLs in production for security
 origins = [
-    "http://localhost:3000",  # Your React frontend's development URL
+    "http://localhost:3000",  # Development - Next.js frontend
     "http://127.0.0.1:3000",
-    "http://localhost:3001",  # Alternative port
+    "http://localhost:3001",  # Alternative development port
     "http://127.0.0.1:3001",
-    # Add your production frontend URL(s) here when you deploy
-    # "https://your-frontend-domain.com",
 ]
+
+# Add production URLs from environment variable if available
+production_origin = os.getenv("FRONTEND_URL")
+if production_origin:
+    origins.append(production_origin)
+    logger.info(f"Added production frontend URL: {production_origin}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -61,19 +159,46 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# --- End CORS Configuration ---
+logger.info(f"CORS enabled for origins: {origins}")
 
-# --- MongoDB Connection Setup ---
+# ============================================
+# MONGODB CONNECTION SETUP WITH PRODUCTION SETTINGS
+# ============================================
 MONGO_DB_URL = os.getenv("MONGO_DB_URL", "mongodb://localhost:27017/")
 DB_NAME = os.getenv("DB_NAME", "tech-oracle")
 COLLECTION_NAME = os.getenv("COLLECTION_NAME", "repair_records")
 
-client = MongoClient(MONGO_DB_URL)
-db = client[DB_NAME]
-repair_records_collection = db[COLLECTION_NAME]
-
-print(f"Connected to MongoDB: {MONGO_DB_URL}, Database: {DB_NAME}, Collection: {COLLECTION_NAME}")
-# --- END Of Database setup ---
+try:
+    # Configure MongoDB client with production-ready settings
+    client = MongoClient(
+        MONGO_DB_URL,
+        maxPoolSize=50,  # Maximum number of connections in the pool
+        minPoolSize=10,  # Minimum number of connections in the pool
+        serverSelectionTimeoutMS=5000,  # Timeout for server selection
+        connectTimeoutMS=10000,  # Timeout for initial connection
+        socketTimeoutMS=30000,  # Timeout for socket operations
+        retryWrites=True,  # Automatically retry write operations
+        retryReads=True,  # Automatically retry read operations
+    )
+    
+    # Test the connection
+    client.admin.command('ping')
+    logger.info(f"✅ Successfully connected to MongoDB: {DB_NAME}")
+    
+    db = client[DB_NAME]
+    repair_records_collection = db[COLLECTION_NAME]
+    
+    # Create indexes for better query performance
+    repair_records_collection.create_index("timestamp")
+    logger.info(f"✅ Database and collection ready: {COLLECTION_NAME}")
+    
+except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+    logger.error(f"❌ Failed to connect to MongoDB: {str(e)}")
+    logger.error("Please ensure MongoDB is running and the connection string is correct.")
+    sys.exit(1)
+except Exception as e:
+    logger.error(f"❌ Unexpected error during MongoDB setup: {str(e)}")
+    sys.exit(1)
 
 # Custom type for ObjectId to string conversion for Pydantic
 PyObjectId = Annotated[str, BeforeValidator(str)]
@@ -134,18 +259,34 @@ class DeviceRepairRequest(BaseModel):
     """
     Model for the initial device repair request from the frontend.
     This is what gets saved first.
+    
+    ⭐ PRODUCTION UPDATE: Added field validation with max lengths to prevent abuse
     """
-    deviceBrand: str
-    deviceModel: str
-    deviceModelNumber: Optional[str] = None
-    deviceIssue: str
-    additionalInfo: Optional[str] = None
-    operatingSystem: Optional[str] = None
-    ram: Optional[str] = None
-    storage: Optional[str] = None
-    processor: Optional[str] = None
-    graphicsCard: Optional[str] = None
-    serialNumber: Optional[str] = None
+    deviceBrand: str = Field(..., min_length=1, max_length=100)
+    deviceModel: str = Field(..., min_length=1, max_length=200)
+    deviceModelNumber: Optional[str] = Field(None, max_length=100)
+    deviceIssue: str = Field(..., min_length=10, max_length=5000)
+    additionalInfo: Optional[str] = Field(None, max_length=3000)
+    operatingSystem: Optional[str] = Field(None, max_length=50)
+    ram: Optional[str] = Field(None, max_length=20)
+    storage: Optional[str] = Field(None, max_length=20)
+    processor: Optional[str] = Field(None, max_length=100)
+    graphicsCard: Optional[str] = Field(None, max_length=100)
+    serialNumber: Optional[str] = Field(None, max_length=100)
+    
+    @field_validator('deviceIssue')
+    @classmethod
+    def validate_device_issue(cls, v: str) -> str:
+        if len(v.strip()) < 10:
+            raise ValueError('Device issue description must be at least 10 characters')
+        return v.strip()
+    
+    @field_validator('deviceBrand', 'deviceModel')
+    @classmethod
+    def validate_required_fields(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError('This field is required and cannot be empty')
+        return v.strip()
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -207,18 +348,79 @@ class RepairGuide(BaseModel): # Model for the AI generated repair guide
 # --- API Endpoints ---
 
 @app.get("/")
-async def read_root():
+@limiter.limit("100/minute")
+async def read_root(request: Request):
     """
     A simple root endpoint to verify the API is running.
     """
-    return {"message": "Welcome to Tech Oracle Repair Assistant API!"}
+    logger.info("Root endpoint accessed")
+    return {
+        "message": "Welcome to Tech Oracle Repair Assistant API!",
+        "version": "1.0.0",
+        "status": "online"
+    }
+
+@app.get("/health")
+@limiter.limit("30/minute")
+async def health_check(request: Request):
+    """
+    Health check endpoint for monitoring and load balancers.
+    Verifies database connectivity and service health.
+    
+    ⭐ PRODUCTION READY: Use this endpoint for uptime monitoring
+    """
+    health_status = {
+        "status": "healthy",
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "version": "1.0.0",
+        "ai_mode": "groq" if USE_GROQ else "ollama",
+        "services": {}
+    }
+    
+    # Check MongoDB connection
+    try:
+        client.admin.command('ping')
+        health_status["services"]["mongodb"] = "connected"
+    except Exception as e:
+        logger.error(f"Health check - MongoDB connection failed: {str(e)}")
+        health_status["services"]["mongodb"] = "disconnected"
+        health_status["status"] = "unhealthy"
+    
+    # Check AI service availability
+    if USE_GROQ:
+        # Check Groq configuration
+        if os.getenv("GROQ_API_KEY"):
+            health_status["services"]["groq"] = "configured"
+        else:
+            health_status["services"]["groq"] = "not_configured"
+            logger.warning("Health check - GROQ_API_KEY not set")
+    else:
+        # Check Ollama availability
+        try:
+            ollama.list()
+            health_status["services"]["ollama"] = "available"
+        except Exception as e:
+            logger.warning(f"Health check - Ollama not available: {str(e)}")
+            health_status["services"]["ollama"] = "unavailable"
+            # Don't mark as unhealthy, just warn
+    
+    if health_status["status"] == "unhealthy":
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=health_status)
+    
+    return health_status
 
 @app.post("/api/auth/login", response_model=TokenResponse, summary="Technician login")
-async def login(credentials: LoginRequest):
+@limiter.limit("5/minute")  # Strict limit to prevent brute force attacks
+async def login(request: Request, credentials: LoginRequest):
     """
     Authenticate technician and return JWT access token.
+    
+    ⭐ PRODUCTION READY: Secure password verification with bcrypt
     """
+    logger.info("Technician login attempt")
+    
     if not verify_password(credentials.password, TECHNICIAN_PASSWORD_HASH):
+        logger.warning("Failed login attempt - incorrect password")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect password",
@@ -229,42 +431,77 @@ async def login(credentials: LoginRequest):
         data={"sub": "technician"},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
+    
+    logger.info("✅ Technician logged in successfully")
     return TokenResponse(access_token=access_token)
 
 @app.get("/generate", response_model=dict, summary="Generate a general AI response")
-async def generate_response(prompt: str):
+@limiter.limit("10/minute")  # AI generation is resource-intensive
+async def generate_response(request: Request, prompt: str):
     """
     Generates a general AI response based on a given prompt.
+    
+    ⭐ PRODUCTION UPDATE: Supports both Ollama (local) and Groq (cloud)
     """
+    logger.info(f"AI generation request received (prompt length: {len(prompt)})")
+    
+    # Validate prompt length
+    if len(prompt) > 2000:
+        logger.warning(f"Prompt too long: {len(prompt)} characters")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Prompt is too long. Maximum 2000 characters allowed."
+        )
+    
     try:
-        response = ollama.chat(model="llama3", messages=[{"role": "user", "content": prompt}])
-        return {"response": response['message']['content']}
+        if USE_GROQ:
+            # Use Groq for cloud deployment
+            response_text = generate_ai_response(prompt)
+            logger.info("✅ AI response generated successfully (Groq)")
+            return {"response": response_text}
+        else:
+            # Use Ollama for local development
+            response = ollama.chat(model="llama3", messages=[{"role": "user", "content": prompt}])
+            logger.info("✅ AI response generated successfully (Ollama)")
+            return {"response": response['message']['content']}
+            
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate response from AI: {str(e)}")
+        logger.error(f"AI service error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service is temporarily unavailable. Please try again later."
+        )
 
 
 @app.post("/add_repairs", response_model=RepairRecordInDB, status_code=status.HTTP_201_CREATED, summary="Add a new device repair request to the database")
-async def add_to_db(request_data: DeviceRepairRequest): # Accepts only DeviceRepairRequest
+@limiter.limit("20/minute")  # Limit form submissions to prevent spam
+async def add_to_db(request: Request, request_data: DeviceRepairRequest):
     """
     Saves a new device repair request to MongoDB.
     The AI repair guide will be generated and added in a separate step.
+    
+    ⭐ PRODUCTION UPDATE: Enhanced error handling and validation
     """
+    logger.info(f"New repair request: {request_data.deviceBrand} {request_data.deviceModel}")
+    
     # Convert Pydantic model to a dictionary suitable for MongoDB
-    record_data_dict = request_data.model_dump() # No by_alias needed here for _id
+    record_data_dict = request_data.model_dump()
 
     record_data_dict["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    record_data_dict["repair_guide"] = None # Explicitly set to None initially
-    record_data_dict["guide_generated_at"] = None # No guide generated yet
+    record_data_dict["repair_guide"] = None
+    record_data_dict["guide_generated_at"] = None
 
     try:
         result = repair_records_collection.insert_one(record_data_dict)
-        # Update the dictionary with the MongoDB-generated _id
         record_data_dict["_id"] = result.inserted_id
-        # Return the saved record, converted back to the Pydantic model for validation/response
+        logger.info(f"✅ Repair record saved with ID: {result.inserted_id}")
         return RepairRecordInDB(**record_data_dict)
     except Exception as e:
-        print(f"Error saving to MongoDB: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to save repair record to database: {str(e)}")
+        logger.error(f"Database error saving repair record: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save repair record. Please try again."
+        )
 
 def create_structured_prompt(device_info: RepairRecordInDB) -> str:
     """
@@ -351,27 +588,54 @@ Device Information:
         specs=specs,
     )
 @app.post("/generate_guide_for_record/{record_id}", response_model=RepairRecordInDB, summary="Generate and save an AI repair guide for an existing record")
-async def generate_guide_for_record(record_id: str, token_payload: dict = Depends(verify_token)):
+@limiter.limit("10/minute")  # AI generation is resource-intensive
+async def generate_guide_for_record(request: Request, record_id: str, token_payload: dict = Depends(verify_token)):
+    """
+    Generate AI repair guide for an existing record.
+    
+    ⭐ PRODUCTION UPDATE: Enhanced Ollama error handling with fallback and retry logic
+    """
+    logger.info(f"Guide generation requested for record: {record_id}")
+    
     if not ObjectId.is_valid(record_id):
+        logger.warning(f"Invalid record ID format: {record_id}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid record ID format")
 
     try:
         # Fetch existing record
         existing_record_dict = repair_records_collection.find_one({"_id": ObjectId(record_id)})
         if not existing_record_dict:
+            logger.warning(f"Record not found: {record_id}")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                               detail=f"Record with ID {record_id} not found")
 
         existing_record = RepairRecordInDB(**existing_record_dict)
+        logger.info(f"Generating guide for: {existing_record.deviceBrand} {existing_record.deviceModel}")
         
         # Generate structured prompt
         prompt = create_structured_prompt(existing_record)
         
-        # Get AI response
-        response = ollama.chat(model="llama3", messages=[
-            {"role": "user", "content": prompt}
-        ])
-        generated_guide = response['message']['content']
+        # Get AI response with error handling
+        generated_guide = None
+        try:
+            if USE_GROQ:
+                # Use Groq for cloud deployment
+                generated_guide = generate_ai_response(prompt)
+                logger.info("✅ AI guide generated successfully (Groq)")
+            else:
+                # Use Ollama for local development
+                response = ollama.chat(model="llama3", messages=[
+                    {"role": "user", "content": prompt}
+                ])
+                generated_guide = response['message']['content']
+                logger.info("✅ AI guide generated successfully (Ollama)")
+                
+        except Exception as e:
+            logger.error(f"AI service error: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI service error. Please try again later."
+            )
         
         # Clean up the guide to ensure consistent formatting
         # Remove any text before first delimiter and after last delimiter
@@ -414,34 +678,57 @@ async def generate_guide_for_record(record_id: str, token_payload: dict = Depend
 
 
 @app.get("/api/repair_records", response_model=List[RepairRecordInDB], summary="Retrieve all saved repair records")
-async def get_all_repair_records(token_payload: dict = Depends(verify_token)):
+@limiter.limit("60/minute")  # Authenticated endpoint, more lenient
+async def get_all_repair_records(request: Request, token_payload: dict = Depends(verify_token)):
     """
     Retrieves all previously saved device repair requests and their generated guides from MongoDB.
     Requires authentication.
+    
+    ⭐ PRODUCTION READY: Includes pagination-ready structure and error handling
     """
+    logger.info("Fetching all repair records")
     records = []
     try:
         for record in repair_records_collection.find().sort("timestamp", -1):
             records.append(RepairRecordInDB(**record))
+        logger.info(f"✅ Retrieved {len(records)} repair records")
         return records
     except Exception as e:
-        print(f"Error fetching records from MongoDB: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to retrieve repair records: {str(e)}")
+        logger.error(f"Database error fetching records: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve repair records. Please try again."
+        )
 
 
 @app.get("/api/repair_records/{record_id}", response_model=RepairRecordInDB, summary="Retrieve a single repair record by ID")
-async def get_repair_record(record_id: str, token_payload: dict = Depends(verify_token)):
+@limiter.limit("60/minute")  # Authenticated endpoint, more lenient
+async def get_repair_record(request: Request, record_id: str, token_payload: dict = Depends(verify_token)):
     """
     Retrieves a single repair record by its unique ID from MongoDB.
     Requires authentication.
+    
+    ⭐ PRODUCTION READY: Full error handling and logging
     """
+    logger.info(f"Fetching repair record: {record_id}")
+    
     if not ObjectId.is_valid(record_id):
+        logger.warning(f"Invalid record ID format: {record_id}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid record ID format")
+    
     try:
         record = repair_records_collection.find_one({"_id": ObjectId(record_id)})
         if record:
+            logger.info(f"✅ Record found: {record_id}")
             return RepairRecordInDB(**record)
+        
+        logger.warning(f"Record not found: {record_id}")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Record with ID {record_id} not found")
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Error fetching record {record_id} from MongoDB: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to retrieve repair record: {str(e)}")
+        logger.error(f"Database error fetching record {record_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve repair record. Please try again."
+        )

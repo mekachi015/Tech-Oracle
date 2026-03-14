@@ -1,9 +1,26 @@
+# Core Framework
 fastapi
-uvicorn
-ollama
+uvicorn[standard]
+
+# AI Integration
+ollama  # For local development
+groq    # For production deployment (free tier cloud AI)
+
+# Configuration
 python-dotenv
+
+# HTTP Client
 requests
+
+# Database
 pymongo
+
+# Authentication & Security
 PyJWT
 bcrypt
 python-multipart
+
+# Rate Limiting (Production)
+slowapi
+
+# Monitoring & Logging (Built-in with Python, no extra packages needed)
