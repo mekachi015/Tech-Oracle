@@ -168,6 +168,12 @@ MONGO_DB_URL = os.getenv("MONGO_DB_URL", "mongodb://localhost:27017/")
 DB_NAME = os.getenv("DB_NAME", "tech-oracle")
 COLLECTION_NAME = os.getenv("COLLECTION_NAME", "repair_records")
 
+# Handle common deployment paste mistakes in env vars (e.g., key prefix or quotes)
+if MONGO_DB_URL:
+    MONGO_DB_URL = MONGO_DB_URL.strip().strip('"').strip("'")
+    if MONGO_DB_URL.startswith("MONGO_DB_URL="):
+        MONGO_DB_URL = MONGO_DB_URL.split("=", 1)[1].strip()
+
 try:
     # Configure MongoDB client with production-ready settings
     client = MongoClient(
