@@ -10,7 +10,9 @@ from smtplib import SMTPException
 
 from fastapi import FastAPI, HTTPException, status, Depends, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.exceptions import RequestValidationError
 import os
 
 from pymongo import MongoClient
@@ -42,6 +44,15 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Log full 422 validation details to speed up production debugging."""
+    logger.warning(f"Validation error on {request.method} {request.url.path}: {exc.errors()}")
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": exc.errors()},
+    )
 
 # ============================================
 # AI INTEGRATION - OLLAMA (LOCAL) OR GROQ (CLOUD)
@@ -139,6 +150,7 @@ app = FastAPI(
     description="An AI powered technical assistant for device repair, with MongoDB storage.",
     version="1.0.0",
 )
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 # ============================================
 # RATE LIMITING CONFIGURATION
@@ -301,9 +313,9 @@ class DeviceRepairRequest(BaseModel):
     
     ⭐ PRODUCTION UPDATE: Added field validation with max lengths to prevent abuse
     """
-    fullName: str = Field(..., min_length=1, max_length=120)
-    phoneNumber: str = Field(..., min_length=7, max_length=30)
-    emailAddress: EmailStr
+    fullName: Optional[str] = Field(None, max_length=120)
+    phoneNumber: Optional[str] = Field(None, max_length=30)
+    emailAddress: Optional[EmailStr] = None
     deviceBrand: str = Field(..., min_length=1, max_length=100)
     deviceModel: str = Field(..., min_length=1, max_length=200)
     deviceModelNumber: Optional[str] = Field(None, max_length=100)
@@ -323,16 +335,26 @@ class DeviceRepairRequest(BaseModel):
             raise ValueError('Device issue description must be at least 10 characters')
         return v.strip()
     
-    @field_validator('deviceBrand', 'deviceModel', 'fullName', 'phoneNumber')
+    @field_validator('deviceBrand', 'deviceModel')
     @classmethod
     def validate_required_fields(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError('This field is required and cannot be empty')
         return v.strip()
 
+    @field_validator('fullName', 'phoneNumber')
+    @classmethod
+    def validate_optional_text_fields(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        trimmed = v.strip()
+        return trimmed if trimmed else None
+
     @field_validator('emailAddress')
     @classmethod
-    def normalize_email_address(cls, v: EmailStr) -> str:
+    def normalize_email_address(cls, v: Optional[EmailStr]) -> Optional[str]:
+        if v is None:
+            return None
         return str(v).strip().lower()
 
     model_config = ConfigDict(
@@ -398,24 +420,27 @@ def send_repair_submission_emails(record: dict) -> None:
         return
 
     repair_id = str(record.get("_id", ""))
-    full_name = record.get("fullName", "")
-    phone_number = record.get("phoneNumber", "")
-    user_email = record.get("emailAddress", "")
+    full_name = record.get("fullName") or "Unknown"
+    phone_number = record.get("phoneNumber") or "Unknown"
+    user_email = record.get("emailAddress")
 
-    if not repair_id or not user_email:
+    if not repair_id:
         logger.warning("Skipping repair email notification because required fields are missing")
         return
 
     user_body, technician_body = build_repair_email_bodies(repair_id, full_name, phone_number)
 
-    try:
-        send_email_message(
-            to_email=user_email,
-            subject=f"Repair Request Submitted - ID {repair_id}",
-            body=user_body,
-        )
-    except (SMTPException, OSError, TimeoutError) as user_email_error:
-        logger.error(f"User email failed for repair ID {repair_id}: {str(user_email_error)}")
+    if user_email:
+        try:
+            send_email_message(
+                to_email=user_email,
+                subject=f"Repair Request Submitted - ID {repair_id}",
+                body=user_body,
+            )
+        except (SMTPException, OSError, TimeoutError) as user_email_error:
+            logger.error(f"User email failed for repair ID {repair_id}: {str(user_email_error)}")
+    else:
+        logger.warning(f"User email skipped for repair ID {repair_id}: emailAddress not provided")
 
     try:
         send_email_message(
