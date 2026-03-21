@@ -130,10 +130,23 @@ EMAIL_NOTIFICATIONS_ENABLED = all([
     SMTP_FROM_EMAIL,
 ])
 
+EMAIL_REQUIRED_SETTINGS = {
+    "SMTP_HOST": SMTP_HOST,
+    "SMTP_USERNAME": SMTP_USERNAME,
+    "SMTP_PASSWORD": SMTP_PASSWORD,
+    "SMTP_FROM_EMAIL": SMTP_FROM_EMAIL,
+}
+
+EMAIL_MISSING_SETTINGS = [
+    key for key, value in EMAIL_REQUIRED_SETTINGS.items() if not value
+]
+
 if EMAIL_NOTIFICATIONS_ENABLED:
     logger.info("✅ Email notifications are enabled")
 else:
-    logger.warning("⚠️  Email notifications are disabled. Set SMTP and TECHNICIAN_EMAIL variables to enable.")
+    logger.warning(
+        f"⚠️  Email notifications are disabled. Missing settings: {', '.join(EMAIL_MISSING_SETTINGS)}"
+    )
 
 security = HTTPBearer()
 
@@ -417,6 +430,7 @@ def build_repair_email_bodies(repair_id: str, full_name: str, phone_number: str)
 def send_repair_submission_emails(record: dict) -> None:
     """Send confirmation email to user and pending-repair alert to technician."""
     if not EMAIL_NOTIFICATIONS_ENABLED:
+        logger.warning("Email send skipped: email notifications are disabled by configuration")
         return
 
     repair_id = str(record.get("_id", ""))
@@ -555,6 +569,12 @@ async def health_check(request: Request):
             logger.warning(f"Health check - Ollama not available: {str(e)}")
             health_status["services"]["ollama"] = "unavailable"
             # Don't mark as unhealthy, just warn
+
+    health_status["services"]["email_notifications"] = {
+        "enabled": EMAIL_NOTIFICATIONS_ENABLED,
+        "technician_email": TECHNICIAN_EMAIL,
+        "missing_settings": EMAIL_MISSING_SETTINGS,
+    }
     
     if health_status["status"] == "unhealthy":
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=health_status)
