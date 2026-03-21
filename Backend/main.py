@@ -5,6 +5,7 @@ import logging
 import sys
 import smtplib
 import time
+import socket
 from email.message import EmailMessage
 from smtplib import SMTPException
 
@@ -122,6 +123,7 @@ TECHNICIAN_EMAIL = "katlegomakoti07@gmail.com"
 SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
 SMTP_TIMEOUT_SECONDS = int(os.getenv("SMTP_TIMEOUT_SECONDS", "20"))
 EMAIL_SEND_MODE = os.getenv("EMAIL_SEND_MODE", "sync").lower()  # sync | background
+SMTP_FORCE_IPV4 = os.getenv("SMTP_FORCE_IPV4", "true").lower() == "true"
 
 EMAIL_NOTIFICATIONS_ENABLED = all([
     SMTP_HOST,
@@ -386,6 +388,37 @@ class DeviceRepairRequest(BaseModel):
     )
 
 
+def create_smtp_client() -> smtplib.SMTP:
+    """Create an SMTP client with optional IPv4-first connection strategy."""
+    if not SMTP_FORCE_IPV4:
+        return smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT_SECONDS)
+
+    last_error: Optional[Exception] = None
+
+    # Prefer IPv4 addresses first to avoid IPv6 routing issues in some hosted environments.
+    try:
+        addr_info = socket.getaddrinfo(SMTP_HOST, SMTP_PORT, socket.AF_INET, socket.SOCK_STREAM)
+    except socket.gaierror as e:
+        addr_info = []
+        last_error = e
+
+    for family, socktype, proto, _canonname, sockaddr in addr_info:
+        ip_address = sockaddr[0]
+        try:
+            smtp = smtplib.SMTP(timeout=SMTP_TIMEOUT_SECONDS)
+            smtp.connect(ip_address, SMTP_PORT)
+            return smtp
+        except (OSError, SMTPException) as e:
+            last_error = e
+
+    try:
+        return smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT_SECONDS)
+    except (OSError, SMTPException) as e:
+        if last_error:
+            raise OSError(f"SMTP connection failed via IPv4 and hostname fallback: {last_error} | {e}")
+        raise
+
+
 def send_email_message(to_email: str, subject: str, body: str, max_retries: int = 3) -> None:
     """Send a plain text email using configured SMTP settings with retry/backoff."""
     message = EmailMessage()
@@ -396,7 +429,10 @@ def send_email_message(to_email: str, subject: str, body: str, max_retries: int 
 
     for attempt in range(1, max_retries + 1):
         try:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT_SECONDS) as smtp:
+            logger.info(
+                f"SMTP send attempt {attempt}/{max_retries} to {to_email} via {SMTP_HOST}:{SMTP_PORT} (force_ipv4={SMTP_FORCE_IPV4})"
+            )
+            with create_smtp_client() as smtp:
                 smtp.ehlo()
                 if SMTP_USE_TLS:
                     smtp.starttls()
