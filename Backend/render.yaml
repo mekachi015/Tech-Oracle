@@ -26,3 +26,17 @@ services:
         sync: false  # Your Vercel URL
       - key: USE_GROQ
         value: true  # Use Groq instead of Ollama in production
+      - key: SMTP_HOST
+        sync: false  # e.g. smtp.gmail.com
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USERNAME
+        sync: false  # SMTP login email
+      - key: SMTP_PASSWORD
+        sync: false  # App password / SMTP password
+      - key: SMTP_FROM_EMAIL
+        sync: false  # Sender email
+      - key: SMTP_USE_TLS
+        value: true
+      - key: SMTP_TIMEOUT_SECONDS
+        value: 20
