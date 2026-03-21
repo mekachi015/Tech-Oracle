@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.exceptions import RequestValidationError
 import os
+import requests
 
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
@@ -124,6 +125,9 @@ SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
 SMTP_TIMEOUT_SECONDS = int(os.getenv("SMTP_TIMEOUT_SECONDS", "20"))
 EMAIL_SEND_MODE = os.getenv("EMAIL_SEND_MODE", "sync").lower()  # sync | background
 SMTP_FORCE_IPV4 = os.getenv("SMTP_FORCE_IPV4", "true").lower() == "true"
+EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "auto").lower()  # auto | smtp | resend
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+RESEND_API_URL = os.getenv("RESEND_API_URL", "https://api.resend.com/emails")
 
 EMAIL_NOTIFICATIONS_ENABLED = all([
     SMTP_HOST,
@@ -132,6 +136,8 @@ EMAIL_NOTIFICATIONS_ENABLED = all([
     SMTP_PASSWORD,
     SMTP_FROM_EMAIL,
 ])
+
+RESEND_NOTIFICATIONS_ENABLED = bool(RESEND_API_KEY and SMTP_FROM_EMAIL)
 
 EMAIL_REQUIRED_SETTINGS = {
     "SMTP_HOST": SMTP_HOST,
@@ -150,6 +156,11 @@ else:
     logger.warning(
         f"⚠️  Email notifications are disabled. Missing settings: {', '.join(EMAIL_MISSING_SETTINGS)}"
     )
+
+if RESEND_NOTIFICATIONS_ENABLED:
+    logger.info("✅ Resend API email delivery is enabled")
+else:
+    logger.info("ℹ️  Resend API email delivery is disabled (set RESEND_API_KEY to enable)")
 
 security = HTTPBearer()
 
@@ -419,13 +430,51 @@ def create_smtp_client() -> smtplib.SMTP:
         raise
 
 
+def send_email_message_resend(to_email: str, subject: str, body: str) -> None:
+    """Send email using Resend HTTPS API (reliable in restricted SMTP environments)."""
+    if not RESEND_NOTIFICATIONS_ENABLED:
+        raise RuntimeError("Resend API is not configured")
+
+    payload = {
+        "from": SMTP_FROM_EMAIL,
+        "to": [to_email],
+        "subject": subject,
+        "text": body,
+    }
+    headers = {
+        "Authorization": f"Bearer {RESEND_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    response = requests.post(
+        RESEND_API_URL,
+        json=payload,
+        headers=headers,
+        timeout=SMTP_TIMEOUT_SECONDS,
+    )
+
+    if response.status_code >= 400:
+        raise RuntimeError(f"Resend API error {response.status_code}: {response.text}")
+
+
 def send_email_message(to_email: str, subject: str, body: str, max_retries: int = 3) -> None:
-    """Send a plain text email using configured SMTP settings with retry/backoff."""
+    """Send email using configured provider with SMTP retry/backoff and Resend fallback."""
     message = EmailMessage()
     message["From"] = SMTP_FROM_EMAIL
     message["To"] = to_email
     message["Subject"] = subject
     message.set_content(body)
+
+    if EMAIL_PROVIDER == "resend":
+        send_email_message_resend(to_email, subject, body)
+        return
+
+    if EMAIL_PROVIDER == "smtp" and not EMAIL_NOTIFICATIONS_ENABLED:
+        raise RuntimeError("SMTP provider selected but SMTP settings are incomplete")
+
+    if EMAIL_PROVIDER == "auto" and not EMAIL_NOTIFICATIONS_ENABLED and RESEND_NOTIFICATIONS_ENABLED:
+        send_email_message_resend(to_email, subject, body)
+        return
 
     for attempt in range(1, max_retries + 1):
         try:
@@ -441,6 +490,10 @@ def send_email_message(to_email: str, subject: str, body: str, max_retries: int 
                 smtp.send_message(message)
             return
         except (SMTPException, OSError, TimeoutError) as email_error:
+            if EMAIL_PROVIDER == "auto" and RESEND_NOTIFICATIONS_ENABLED:
+                logger.warning(f"SMTP failed, falling back to Resend API: {str(email_error)}")
+                send_email_message_resend(to_email, subject, body)
+                return
             if attempt == max_retries:
                 raise email_error
             # Exponential backoff to handle brief SMTP provider/network instability.

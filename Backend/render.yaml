@@ -44,3 +44,9 @@ services:
         value: sync
       - key: SMTP_FORCE_IPV4
         value: true
+      - key: EMAIL_PROVIDER
+        value: auto
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_API_URL
+        value: https://api.resend.com/emails
