@@ -22,7 +22,7 @@ except ImportError:
 
 def generate_ai_response(
     prompt: str,
-    model: str = "llama3-70b-8192",
+    model: str = "mixtral-8x7b-32768",
     temperature: float = 0.7,
     max_tokens: int = 4096
 ) -> str:
@@ -31,14 +31,14 @@ def generate_ai_response(
     
     Args:
         prompt: The user prompt/question
-        model: Model to use (default: llama3-70b-8192)
+        model: Model to use (default: mixtral-8x7b-32768)
         temperature: Creativity level (0.0-1.0)
         max_tokens: Maximum response length
     
     Available models (as of 2026):
-        - llama3-70b-8192 (recommended - 70B parameters, 8K context)
-        - llama3-8b-8192 (faster, smaller model)
-        - mixtral-8x7b-32768 (good for longer context)
+        - mixtral-8x7b-32768 (recommended - fast, 32K context)
+        - llama-3.1-70b-versatile (most capable, 8K context)
+        - llama-3.1-8b-instant (faster, smaller model, 8K context)
         - gemma-7b-it (Google's model)
     
     Returns:
