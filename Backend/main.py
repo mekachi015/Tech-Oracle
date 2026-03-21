@@ -3,8 +3,12 @@ import datetime
 from datetime import timedelta
 import logging
 import sys
+import smtplib
+import time
+from email.message import EmailMessage
+from smtplib import SMTPException
 
-from fastapi import FastAPI, HTTPException, status, Depends, Request
+from fastapi import FastAPI, HTTPException, status, Depends, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
@@ -14,7 +18,7 @@ from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from bson import ObjectId
 from dotenv import load_dotenv
 
-from pydantic import BaseModel, Field, BeforeValidator, ConfigDict, field_validator
+from pydantic import BaseModel, Field, BeforeValidator, ConfigDict, field_validator, EmailStr
 from typing import Optional, Annotated, List
 
 import jwt
@@ -94,6 +98,31 @@ validate_environment()
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 hours
+
+# ============================================
+# EMAIL CONFIGURATION
+# ============================================
+SMTP_HOST = os.getenv("SMTP_HOST", "")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", SMTP_USERNAME)
+TECHNICIAN_EMAIL = "katlegomakoti07@gmail.com"
+SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+SMTP_TIMEOUT_SECONDS = int(os.getenv("SMTP_TIMEOUT_SECONDS", "20"))
+
+EMAIL_NOTIFICATIONS_ENABLED = all([
+    SMTP_HOST,
+    SMTP_PORT,
+    SMTP_USERNAME,
+    SMTP_PASSWORD,
+    SMTP_FROM_EMAIL,
+])
+
+if EMAIL_NOTIFICATIONS_ENABLED:
+    logger.info("✅ Email notifications are enabled")
+else:
+    logger.warning("⚠️  Email notifications are disabled. Set SMTP and TECHNICIAN_EMAIL variables to enable.")
 
 security = HTTPBearer()
 
@@ -272,6 +301,9 @@ class DeviceRepairRequest(BaseModel):
     
     ⭐ PRODUCTION UPDATE: Added field validation with max lengths to prevent abuse
     """
+    fullName: str = Field(..., min_length=1, max_length=120)
+    phoneNumber: str = Field(..., min_length=7, max_length=30)
+    emailAddress: EmailStr
     deviceBrand: str = Field(..., min_length=1, max_length=100)
     deviceModel: str = Field(..., min_length=1, max_length=200)
     deviceModelNumber: Optional[str] = Field(None, max_length=100)
@@ -291,23 +323,108 @@ class DeviceRepairRequest(BaseModel):
             raise ValueError('Device issue description must be at least 10 characters')
         return v.strip()
     
-    @field_validator('deviceBrand', 'deviceModel')
+    @field_validator('deviceBrand', 'deviceModel', 'fullName', 'phoneNumber')
     @classmethod
     def validate_required_fields(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError('This field is required and cannot be empty')
         return v.strip()
 
+    @field_validator('emailAddress')
+    @classmethod
+    def normalize_email_address(cls, v: EmailStr) -> str:
+        return str(v).strip().lower()
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "deviceBrand": "Dell",
                 "deviceModel": "XPS 15",
+                "fullName": "Jane Doe",
+                "phoneNumber": "+1 555 123 4567",
+                "emailAddress": "jane@example.com",
                 "deviceIssue": "Screen flickering",
                 "additionalInfo": "Happens randomly."
             }
         }
     )
+
+
+def send_email_message(to_email: str, subject: str, body: str, max_retries: int = 3) -> None:
+    """Send a plain text email using configured SMTP settings with retry/backoff."""
+    message = EmailMessage()
+    message["From"] = SMTP_FROM_EMAIL
+    message["To"] = to_email
+    message["Subject"] = subject
+    message.set_content(body)
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT_SECONDS) as smtp:
+                smtp.ehlo()
+                if SMTP_USE_TLS:
+                    smtp.starttls()
+                    smtp.ehlo()
+                smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
+                smtp.send_message(message)
+            return
+        except (SMTPException, OSError, TimeoutError) as email_error:
+            if attempt == max_retries:
+                raise email_error
+            # Exponential backoff to handle brief SMTP provider/network instability.
+            time.sleep(2 ** (attempt - 1))
+
+
+def build_repair_email_bodies(repair_id: str, full_name: str, phone_number: str) -> tuple[str, str]:
+    """Build user and technician email bodies with required messaging."""
+    name_parts = full_name.split()
+    first_name = name_parts[0] if name_parts else full_name
+    surname = " ".join(name_parts[1:]) if len(name_parts) > 1 else "N/A"
+
+    user_body = (
+        f"Your repair issue was submitted with the repair ID {repair_id}."
+    )
+
+    technician_body = (
+        f"You have a pending repair, by {first_name} {surname} and {phone_number}."
+    )
+
+    return user_body, technician_body
+
+
+def send_repair_submission_emails(record: dict) -> None:
+    """Send confirmation email to user and pending-repair alert to technician."""
+    if not EMAIL_NOTIFICATIONS_ENABLED:
+        return
+
+    repair_id = str(record.get("_id", ""))
+    full_name = record.get("fullName", "")
+    phone_number = record.get("phoneNumber", "")
+    user_email = record.get("emailAddress", "")
+
+    if not repair_id or not user_email:
+        logger.warning("Skipping repair email notification because required fields are missing")
+        return
+
+    user_body, technician_body = build_repair_email_bodies(repair_id, full_name, phone_number)
+
+    try:
+        send_email_message(
+            to_email=user_email,
+            subject=f"Repair Request Submitted - ID {repair_id}",
+            body=user_body,
+        )
+    except (SMTPException, OSError, TimeoutError) as user_email_error:
+        logger.error(f"User email failed for repair ID {repair_id}: {str(user_email_error)}")
+
+    try:
+        send_email_message(
+            to_email=TECHNICIAN_EMAIL,
+            subject=f"Pending Repair Alert - ID {repair_id}",
+            body=technician_body,
+        )
+    except (SMTPException, OSError, TimeoutError) as technician_email_error:
+        logger.error(f"Technician email failed for repair ID {repair_id}: {str(technician_email_error)}")
 
 class RepairRecordInDB(DeviceRepairRequest):
     """
@@ -485,7 +602,7 @@ async def generate_response(request: Request, prompt: str):
 
 @app.post("/add_repairs", response_model=RepairRecordInDB, status_code=status.HTTP_201_CREATED, summary="Add a new device repair request to the database")
 @limiter.limit("20/minute")  # Limit form submissions to prevent spam
-async def add_to_db(request: Request, request_data: DeviceRepairRequest):
+async def add_to_db(request: Request, request_data: DeviceRepairRequest, background_tasks: BackgroundTasks):
     """
     Saves a new device repair request to MongoDB.
     The AI repair guide will be generated and added in a separate step.
@@ -505,6 +622,10 @@ async def add_to_db(request: Request, request_data: DeviceRepairRequest):
         result = repair_records_collection.insert_one(record_data_dict)
         record_data_dict["_id"] = result.inserted_id
         logger.info(f"✅ Repair record saved with ID: {result.inserted_id}")
+
+        background_tasks.add_task(send_repair_submission_emails, record_data_dict.copy())
+        logger.info(f"✅ Repair email notifications queued for ID: {result.inserted_id}")
+
         return RepairRecordInDB(**record_data_dict)
     except Exception as e:
         logger.error(f"Database error saving repair record: {str(e)}")
