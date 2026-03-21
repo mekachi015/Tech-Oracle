@@ -322,6 +322,9 @@ const UserForm = () => {
 
             try {
                 const payload = {
+                    fullName: formData.fullName,
+                    phoneNumber: formData.phoneNumber,
+                    emailAddress: formData.emailAddress,
                     deviceBrand: formData.deviceBrand,
                     deviceModel: formData.deviceModel,
                     deviceModelNumber: formData.modelNumber,

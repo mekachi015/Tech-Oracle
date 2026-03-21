@@ -19,6 +19,7 @@ pymongo
 PyJWT
 bcrypt
 python-multipart
+email-validator
 
 # Rate Limiting (Production)
 slowapi
