@@ -144,13 +144,17 @@ origins = [
     "http://127.0.0.1:3000",
     "http://localhost:3001",  # Alternative development port
     "http://127.0.0.1:3001",
+    "https://tech-oracle-amber.vercel.app",  # Production Vercel URL
 ]
 
 # Add production URLs from environment variable if available
 production_origin = os.getenv("FRONTEND_URL")
 if production_origin:
     origins.append(production_origin)
-    logger.info(f"Added production frontend URL: {production_origin}")
+    logger.info(f"Added production frontend URL from env: {production_origin}")
+
+# Add wildcard for Vercel preview deployments
+origins.append("https://*.vercel.app")
 
 app.add_middleware(
     CORSMiddleware,
