@@ -22,7 +22,7 @@ except ImportError:
 
 def generate_ai_response(
     prompt: str,
-    model: str = "llama-3.1-70b-versatile",
+    model: str = "llama-3.3-70b-versatile",
     temperature: float = 0.7,
     max_tokens: int = 4096
 ) -> str:
@@ -31,14 +31,14 @@ def generate_ai_response(
     
     Args:
         prompt: The user prompt/question
-        model: Model to use (default: llama-3.1-70b-versatile)
+        model: Model to use (default: llama-3.3-70b-versatile)
         temperature: Creativity level (0.0-1.0)
         max_tokens: Maximum response length
     
     Available models (as of 2026):
-        - llama-3.1-70b-versatile (recommended - fast, capable, 8K context)
+        - llama-3.3-70b-versatile (recommended - quality/reliability balance)
         - llama-3.1-8b-instant (faster, smaller model, 8K context)
-        - gemma-2-9b-it (lightweight, good for simple tasks)
+        - openai/gpt-oss-120b (best reasoning, higher latency/cost)
     
     Returns:
         Generated text response
@@ -59,6 +59,9 @@ def generate_ai_response(
             "GROQ_API_KEY environment variable not set. "
             "Get your API key from: https://console.groq.com"
         )
+
+    # Allow runtime override without code changes.
+    model = os.getenv("GROQ_MODEL", model)
     
     try:
         # Initialize Groq client
