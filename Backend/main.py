@@ -121,6 +121,7 @@ SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", SMTP_USERNAME)
 TECHNICIAN_EMAIL = "katlegomakoti07@gmail.com"
 SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
 SMTP_TIMEOUT_SECONDS = int(os.getenv("SMTP_TIMEOUT_SECONDS", "20"))
+EMAIL_SEND_MODE = os.getenv("EMAIL_SEND_MODE", "sync").lower()  # sync | background
 
 EMAIL_NOTIFICATIONS_ENABLED = all([
     SMTP_HOST,
@@ -142,7 +143,7 @@ EMAIL_MISSING_SETTINGS = [
 ]
 
 if EMAIL_NOTIFICATIONS_ENABLED:
-    logger.info("✅ Email notifications are enabled")
+    logger.info(f"✅ Email notifications are enabled (mode: {EMAIL_SEND_MODE})")
 else:
     logger.warning(
         f"⚠️  Email notifications are disabled. Missing settings: {', '.join(EMAIL_MISSING_SETTINGS)}"
@@ -433,6 +434,8 @@ def send_repair_submission_emails(record: dict) -> None:
         logger.warning("Email send skipped: email notifications are disabled by configuration")
         return
 
+    logger.info("Starting repair submission email notifications")
+
     repair_id = str(record.get("_id", ""))
     full_name = record.get("fullName") or "Unknown"
     phone_number = record.get("phoneNumber") or "Unknown"
@@ -462,8 +465,17 @@ def send_repair_submission_emails(record: dict) -> None:
             subject=f"Pending Repair Alert - ID {repair_id}",
             body=technician_body,
         )
+        logger.info(f"Technician email sent for repair ID {repair_id} to {TECHNICIAN_EMAIL}")
     except (SMTPException, OSError, TimeoutError) as technician_email_error:
         logger.error(f"Technician email failed for repair ID {repair_id}: {str(technician_email_error)}")
+
+
+def send_repair_submission_emails_safe(record: dict) -> None:
+    """Wrapper that guarantees unexpected exceptions are logged."""
+    try:
+        send_repair_submission_emails(record)
+    except Exception as unexpected_error:
+        logger.exception(f"Unexpected email task failure: {str(unexpected_error)}")
 
 class RepairRecordInDB(DeviceRepairRequest):
     """
@@ -668,8 +680,12 @@ async def add_to_db(request: Request, request_data: DeviceRepairRequest, backgro
         record_data_dict["_id"] = result.inserted_id
         logger.info(f"✅ Repair record saved with ID: {result.inserted_id}")
 
-        background_tasks.add_task(send_repair_submission_emails, record_data_dict.copy())
-        logger.info(f"✅ Repair email notifications queued for ID: {result.inserted_id}")
+        if EMAIL_SEND_MODE == "background":
+            background_tasks.add_task(send_repair_submission_emails_safe, record_data_dict.copy())
+            logger.info(f"✅ Repair email notifications queued for ID: {result.inserted_id}")
+        else:
+            send_repair_submission_emails_safe(record_data_dict.copy())
+            logger.info(f"✅ Repair email notifications processed for ID: {result.inserted_id}")
 
         return RepairRecordInDB(**record_data_dict)
     except Exception as e:
@@ -907,4 +923,36 @@ async def get_repair_record(request: Request, record_id: str, token_payload: dic
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve repair record. Please try again."
+        )
+
+
+@app.post("/api/email/test", summary="Send a test technician email")
+@limiter.limit("5/minute")
+async def send_test_email(request: Request, token_payload: dict = Depends(verify_token)):
+    """Trigger a direct test email to verify SMTP setup in production."""
+    if not EMAIL_NOTIFICATIONS_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "message": "Email notifications are disabled",
+                "missing_settings": EMAIL_MISSING_SETTINGS,
+            },
+        )
+
+    try:
+        send_email_message(
+            to_email=TECHNICIAN_EMAIL,
+            subject="Tech Oracle SMTP Test",
+            body="This is a test email from Tech Oracle to verify SMTP delivery.",
+        )
+        return {
+            "status": "sent",
+            "to": TECHNICIAN_EMAIL,
+            "mode": EMAIL_SEND_MODE,
+        }
+    except Exception as e:
+        logger.exception(f"SMTP test failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"SMTP test failed: {str(e)}",
         )

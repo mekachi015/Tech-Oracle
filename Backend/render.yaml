@@ -40,3 +40,5 @@ services:
         value: true
       - key: SMTP_TIMEOUT_SECONDS
         value: 20
+      - key: EMAIL_SEND_MODE
+        value: sync
