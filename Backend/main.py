@@ -6,6 +6,7 @@ import sys
 import smtplib
 import time
 import socket
+import secrets
 from email.message import EmailMessage
 from smtplib import SMTPException
 
@@ -299,6 +300,7 @@ try:
     
     # Create indexes for better query performance
     repair_records_collection.create_index("timestamp")
+    repair_records_collection.create_index("repairNumber", unique=True, sparse=True)
     logger.info(f"✅ Database and collection ready: {COLLECTION_NAME}")
     
 except (ConnectionFailure, ServerSelectionTimeoutError) as e:
@@ -580,11 +582,11 @@ def build_repair_email_bodies(repair_id: str, full_name: str, phone_number: str)
     surname = " ".join(name_parts[1:]) if len(name_parts) > 1 else "N/A"
 
     user_body = (
-        f"Your repair issue was submitted with the repair ID {repair_id}."
+        f"Your repair issue was submitted with the repair number {repair_id}."
     )
 
     technician_body = (
-        f"You have a pending repair, by {first_name} {surname} and {phone_number}."
+        f"You have a pending repair ({repair_id}), by {first_name} {surname} and {phone_number}."
     )
 
     return user_body, technician_body
@@ -598,7 +600,7 @@ def send_repair_submission_emails(record: dict) -> None:
 
     logger.info("Starting repair submission email notifications")
 
-    repair_id = str(record.get("_id", ""))
+    repair_id = (record.get("repairNumber") or str(record.get("_id", ""))).strip()
     full_name = record.get("fullName") or "Unknown"
     phone_number = record.get("phoneNumber") or "Unknown"
     user_email = record.get("emailAddress")
@@ -613,7 +615,7 @@ def send_repair_submission_emails(record: dict) -> None:
         try:
             send_email_message(
                 to_email=user_email,
-                subject=f"Repair Request Submitted - ID {repair_id}",
+                subject=f"Repair Request Submitted - {repair_id}",
                 body=user_body,
             )
         except Exception as user_email_error:
@@ -624,7 +626,7 @@ def send_repair_submission_emails(record: dict) -> None:
     try:
         send_email_message(
             to_email=TECHNICIAN_EMAIL,
-            subject=f"Pending Repair Alert - ID {repair_id}",
+            subject=f"Pending Repair Alert - {repair_id}",
             body=technician_body,
         )
         logger.info(f"Technician email sent for repair ID {repair_id} to {TECHNICIAN_EMAIL}")
@@ -639,6 +641,21 @@ def send_repair_submission_emails_safe(record: dict) -> None:
     except Exception as unexpected_error:
         logger.exception(f"Unexpected email task failure: {str(unexpected_error)}")
 
+
+def generate_memorable_repair_number() -> str:
+    """Generate a short customer-friendly repair number (example: TOR-260322-K9M4)."""
+    date_part = datetime.datetime.now(datetime.timezone.utc).strftime("%y%m%d")
+    charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+    for _ in range(5):
+        suffix = "".join(secrets.choice(charset) for _ in range(4))
+        repair_number = f"TOR-{date_part}-{suffix}"
+        if repair_records_collection.count_documents({"repairNumber": repair_number}, limit=1) == 0:
+            return repair_number
+
+    # Fallback if random collisions occur repeatedly.
+    return f"TOR-{date_part}-{int(time.time()) % 10000:04d}"
+
 class RepairRecordInDB(DeviceRepairRequest):
     """
     Model for data stored in MongoDB.
@@ -646,6 +663,7 @@ class RepairRecordInDB(DeviceRepairRequest):
     """
     id: Optional[PyObjectId] = Field(alias="_id", default=None) # MongoDB _id
     repair_guide: Optional[str] = Field(None, description="The AI Generated Repair Guide") # Made Optional
+    repairNumber: Optional[str] = Field(None, description="Customer-facing memorable repair number")
     timestamp: Optional[str] = None # When the record was initially created
     guide_generated_at: Optional[str] = None # When the guide was generated
 
@@ -659,6 +677,7 @@ class RepairRecordInDB(DeviceRepairRequest):
                 "deviceModel": "XPS 15",
                 "deviceIssue": "Screen flickering",
                 "repair_guide": "1. Check display cable... 2. Update drivers...",
+                "repairNumber": "TOR-260322-K9M4",
                 "timestamp": "2025-08-04T11:00:00.000Z",
                 "guide_generated_at": "2025-08-04T11:05:00.000Z",
                 "additionalInfo": "Happens randomly."
@@ -836,11 +855,14 @@ async def add_to_db(request: Request, request_data: DeviceRepairRequest, backgro
     record_data_dict["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     record_data_dict["repair_guide"] = None
     record_data_dict["guide_generated_at"] = None
+    record_data_dict["repairNumber"] = generate_memorable_repair_number()
 
     try:
         result = repair_records_collection.insert_one(record_data_dict)
         record_data_dict["_id"] = result.inserted_id
-        logger.info(f"✅ Repair record saved with ID: {result.inserted_id}")
+        logger.info(
+            f"✅ Repair record saved with ID: {result.inserted_id} (Repair Number: {record_data_dict['repairNumber']})"
+        )
 
         if EMAIL_SEND_MODE == "background":
             background_tasks.add_task(send_repair_submission_emails_safe, record_data_dict.copy())
@@ -862,13 +884,23 @@ def create_structured_prompt(device_info: RepairRecordInDB) -> str:
     Creates a structured prompt that will generate consistently formatted responses
     """
     prompt_template = """
-You are a technical repair guide generator. Create a detailed repair guide using EXACTLY this format with these EXACT delimiters.
+You are a senior device repair technician and trainer. Create a detailed, practical repair guide using EXACTLY this format with these EXACT delimiters.
 
 CRITICAL FORMATTING RULES:
 1. Use EXACTLY these delimiters (including the asterisks): **COMPLEXITY_START**, **COMPLEXITY_END**, etc.
 2. Do NOT add any text before the first delimiter or after the last delimiter
 3. Put each item on a new line within sections
 4. Complexity must be a single number from 1-10
+5. Write actionable, specific instructions; avoid vague phrases like "check it" or "test it"
+6. In STEPS and TESTING sections, each line must include both the action and what observation confirms success
+
+DETAIL REQUIREMENTS:
+- STEPS section: provide 7 to 12 steps.
+- Each repair step must include: exact action, safety caution if applicable, what to inspect/measure, and expected outcome before continuing.
+- TESTING section: provide 4 to 8 verification checks.
+- Each testing line must include: test action, pass criteria, and what a failure indicates.
+- Mention likely connector names, screws, cables, modules, voltages, temperatures, or diagnostics where relevant.
+- If data is missing, make a reasonable assumption and state the assumption in the line.
 
 You MUST respond in EXACTLY this format:
 
