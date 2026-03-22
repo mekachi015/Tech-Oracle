@@ -128,6 +128,8 @@ SMTP_FORCE_IPV4 = os.getenv("SMTP_FORCE_IPV4", "true").lower() == "true"
 EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "auto").lower()  # auto | smtp | resend | brevo
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 RESEND_API_URL = os.getenv("RESEND_API_URL", "https://api.resend.com/emails")
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+BREVO_API_URL = os.getenv("BREVO_API_URL", "https://api.brevo.com/v3/smtp/email")
 
 # Brevo uses standard SMTP with these defaults.
 if EMAIL_PROVIDER == "brevo":
@@ -144,10 +146,13 @@ SMTP_NOTIFICATIONS_ENABLED = all([
 ])
 
 RESEND_NOTIFICATIONS_ENABLED = bool(RESEND_API_KEY and SMTP_FROM_EMAIL)
+BREVO_API_NOTIFICATIONS_ENABLED = bool(BREVO_API_KEY and SMTP_FROM_EMAIL)
 
 if EMAIL_PROVIDER == "resend":
     EMAIL_NOTIFICATIONS_ENABLED = RESEND_NOTIFICATIONS_ENABLED
-elif EMAIL_PROVIDER in {"smtp", "brevo"}:
+elif EMAIL_PROVIDER == "brevo":
+    EMAIL_NOTIFICATIONS_ENABLED = BREVO_API_NOTIFICATIONS_ENABLED or SMTP_NOTIFICATIONS_ENABLED
+elif EMAIL_PROVIDER == "smtp":
     EMAIL_NOTIFICATIONS_ENABLED = SMTP_NOTIFICATIONS_ENABLED
 else:
     EMAIL_NOTIFICATIONS_ENABLED = SMTP_NOTIFICATIONS_ENABLED or RESEND_NOTIFICATIONS_ENABLED
@@ -170,7 +175,11 @@ if EMAIL_NOTIFICATIONS_ENABLED:
 else:
     if EMAIL_PROVIDER == "resend":
         logger.warning("⚠️  Email notifications are disabled. Missing settings: RESEND_API_KEY and/or SMTP_FROM_EMAIL")
-    elif EMAIL_PROVIDER in {"smtp", "brevo"}:
+    elif EMAIL_PROVIDER == "brevo":
+        logger.warning(
+            "⚠️  Email notifications are disabled. Missing BREVO_API_KEY + SMTP_FROM_EMAIL or SMTP fallback settings"
+        )
+    elif EMAIL_PROVIDER == "smtp":
         logger.warning(
             f"⚠️  Email notifications are disabled. Missing SMTP settings: {', '.join(EMAIL_MISSING_SETTINGS)}"
         )
@@ -479,6 +488,34 @@ def send_email_message_resend(to_email: str, subject: str, body: str) -> None:
         raise RuntimeError(f"Resend API error {response.status_code}: {response.text}")
 
 
+def send_email_message_brevo_api(to_email: str, subject: str, body: str) -> None:
+    """Send email using Brevo HTTPS API to avoid SMTP network restrictions."""
+    if not BREVO_API_NOTIFICATIONS_ENABLED:
+        raise RuntimeError("Brevo API is not configured")
+
+    payload = {
+        "sender": {"email": SMTP_FROM_EMAIL},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "textContent": body,
+    }
+    headers = {
+        "api-key": BREVO_API_KEY,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    response = requests.post(
+        BREVO_API_URL,
+        json=payload,
+        headers=headers,
+        timeout=SMTP_TIMEOUT_SECONDS,
+    )
+
+    if response.status_code >= 400:
+        raise RuntimeError(f"Brevo API error {response.status_code}: {response.text}")
+
+
 def send_email_message(to_email: str, subject: str, body: str, max_retries: int = 3) -> None:
     """Send email using configured provider with SMTP retry/backoff and Resend fallback."""
     message = EmailMessage()
@@ -491,8 +528,19 @@ def send_email_message(to_email: str, subject: str, body: str, max_retries: int 
         send_email_message_resend(to_email, subject, body)
         return
 
-    if EMAIL_PROVIDER in {"smtp", "brevo"} and not SMTP_NOTIFICATIONS_ENABLED:
-        raise RuntimeError(f"{EMAIL_PROVIDER} provider selected but SMTP settings are incomplete")
+    if EMAIL_PROVIDER == "brevo":
+        if BREVO_API_NOTIFICATIONS_ENABLED:
+            try:
+                send_email_message_brevo_api(to_email, subject, body)
+                return
+            except Exception as brevo_api_error:
+                logger.warning(f"Brevo API send failed, attempting SMTP fallback: {str(brevo_api_error)}")
+
+        if not SMTP_NOTIFICATIONS_ENABLED:
+            raise RuntimeError("Brevo selected but neither BREVO_API_KEY nor SMTP fallback settings are configured")
+
+    if EMAIL_PROVIDER == "smtp" and not SMTP_NOTIFICATIONS_ENABLED:
+        raise RuntimeError("smtp provider selected but SMTP settings are incomplete")
 
     if EMAIL_PROVIDER == "auto" and not SMTP_NOTIFICATIONS_ENABLED and RESEND_NOTIFICATIONS_ENABLED:
         send_email_message_resend(to_email, subject, body)

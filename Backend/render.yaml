@@ -41,11 +41,15 @@ services:
       - key: SMTP_TIMEOUT_SECONDS
         value: 20
       - key: EMAIL_SEND_MODE
-        value: sync
+        value: background
       - key: SMTP_FORCE_IPV4
         value: true
       - key: EMAIL_PROVIDER
         value: brevo
+      - key: BREVO_API_KEY
+        sync: false  # Brevo API v3 key (preferred over SMTP on hosted platforms)
+      - key: BREVO_API_URL
+        value: https://api.brevo.com/v3/smtp/email
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_API_URL
