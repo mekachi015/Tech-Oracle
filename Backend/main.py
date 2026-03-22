@@ -125,11 +125,17 @@ SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
 SMTP_TIMEOUT_SECONDS = int(os.getenv("SMTP_TIMEOUT_SECONDS", "20"))
 EMAIL_SEND_MODE = os.getenv("EMAIL_SEND_MODE", "sync").lower()  # sync | background
 SMTP_FORCE_IPV4 = os.getenv("SMTP_FORCE_IPV4", "true").lower() == "true"
-EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "auto").lower()  # auto | smtp | resend
+EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "auto").lower()  # auto | smtp | resend | brevo
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 RESEND_API_URL = os.getenv("RESEND_API_URL", "https://api.resend.com/emails")
 
-EMAIL_NOTIFICATIONS_ENABLED = all([
+# Brevo uses standard SMTP with these defaults.
+if EMAIL_PROVIDER == "brevo":
+    SMTP_HOST = SMTP_HOST or "smtp-relay.brevo.com"
+    if not os.getenv("SMTP_PORT"):
+        SMTP_PORT = 587
+
+SMTP_NOTIFICATIONS_ENABLED = all([
     SMTP_HOST,
     SMTP_PORT,
     SMTP_USERNAME,
@@ -138,6 +144,13 @@ EMAIL_NOTIFICATIONS_ENABLED = all([
 ])
 
 RESEND_NOTIFICATIONS_ENABLED = bool(RESEND_API_KEY and SMTP_FROM_EMAIL)
+
+if EMAIL_PROVIDER == "resend":
+    EMAIL_NOTIFICATIONS_ENABLED = RESEND_NOTIFICATIONS_ENABLED
+elif EMAIL_PROVIDER in {"smtp", "brevo"}:
+    EMAIL_NOTIFICATIONS_ENABLED = SMTP_NOTIFICATIONS_ENABLED
+else:
+    EMAIL_NOTIFICATIONS_ENABLED = SMTP_NOTIFICATIONS_ENABLED or RESEND_NOTIFICATIONS_ENABLED
 
 EMAIL_REQUIRED_SETTINGS = {
     "SMTP_HOST": SMTP_HOST,
@@ -151,11 +164,20 @@ EMAIL_MISSING_SETTINGS = [
 ]
 
 if EMAIL_NOTIFICATIONS_ENABLED:
-    logger.info(f"✅ Email notifications are enabled (mode: {EMAIL_SEND_MODE})")
-else:
-    logger.warning(
-        f"⚠️  Email notifications are disabled. Missing settings: {', '.join(EMAIL_MISSING_SETTINGS)}"
+    logger.info(
+        f"✅ Email notifications are enabled (provider: {EMAIL_PROVIDER}, mode: {EMAIL_SEND_MODE})"
     )
+else:
+    if EMAIL_PROVIDER == "resend":
+        logger.warning("⚠️  Email notifications are disabled. Missing settings: RESEND_API_KEY and/or SMTP_FROM_EMAIL")
+    elif EMAIL_PROVIDER in {"smtp", "brevo"}:
+        logger.warning(
+            f"⚠️  Email notifications are disabled. Missing SMTP settings: {', '.join(EMAIL_MISSING_SETTINGS)}"
+        )
+    else:
+        logger.warning(
+            "⚠️  Email notifications are disabled. Configure SMTP or Resend settings for provider auto"
+        )
 
 if RESEND_NOTIFICATIONS_ENABLED:
     logger.info("✅ Resend API email delivery is enabled")
@@ -469,12 +491,15 @@ def send_email_message(to_email: str, subject: str, body: str, max_retries: int 
         send_email_message_resend(to_email, subject, body)
         return
 
-    if EMAIL_PROVIDER == "smtp" and not EMAIL_NOTIFICATIONS_ENABLED:
-        raise RuntimeError("SMTP provider selected but SMTP settings are incomplete")
+    if EMAIL_PROVIDER in {"smtp", "brevo"} and not SMTP_NOTIFICATIONS_ENABLED:
+        raise RuntimeError(f"{EMAIL_PROVIDER} provider selected but SMTP settings are incomplete")
 
-    if EMAIL_PROVIDER == "auto" and not EMAIL_NOTIFICATIONS_ENABLED and RESEND_NOTIFICATIONS_ENABLED:
+    if EMAIL_PROVIDER == "auto" and not SMTP_NOTIFICATIONS_ENABLED and RESEND_NOTIFICATIONS_ENABLED:
         send_email_message_resend(to_email, subject, body)
         return
+
+    if EMAIL_PROVIDER == "auto" and not SMTP_NOTIFICATIONS_ENABLED and not RESEND_NOTIFICATIONS_ENABLED:
+        raise RuntimeError("Email provider auto selected but neither SMTP nor Resend is configured")
 
     for attempt in range(1, max_retries + 1):
         try:
@@ -520,7 +545,7 @@ def build_repair_email_bodies(repair_id: str, full_name: str, phone_number: str)
 def send_repair_submission_emails(record: dict) -> None:
     """Send confirmation email to user and pending-repair alert to technician."""
     if not EMAIL_NOTIFICATIONS_ENABLED:
-        logger.warning("Email send skipped: email notifications are disabled by configuration")
+        logger.warning(f"Email send skipped: provider '{EMAIL_PROVIDER}' is not configured")
         return
 
     logger.info("Starting repair submission email notifications")
@@ -543,7 +568,7 @@ def send_repair_submission_emails(record: dict) -> None:
                 subject=f"Repair Request Submitted - ID {repair_id}",
                 body=user_body,
             )
-        except (SMTPException, OSError, TimeoutError) as user_email_error:
+        except Exception as user_email_error:
             logger.error(f"User email failed for repair ID {repair_id}: {str(user_email_error)}")
     else:
         logger.warning(f"User email skipped for repair ID {repair_id}: emailAddress not provided")
@@ -555,7 +580,7 @@ def send_repair_submission_emails(record: dict) -> None:
             body=technician_body,
         )
         logger.info(f"Technician email sent for repair ID {repair_id} to {TECHNICIAN_EMAIL}")
-    except (SMTPException, OSError, TimeoutError) as technician_email_error:
+    except Exception as technician_email_error:
         logger.error(f"Technician email failed for repair ID {repair_id}: {str(technician_email_error)}")
 
 

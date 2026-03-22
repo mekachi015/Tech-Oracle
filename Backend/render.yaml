@@ -27,13 +27,13 @@ services:
       - key: USE_GROQ
         value: true  # Use Groq instead of Ollama in production
       - key: SMTP_HOST
-        sync: false  # e.g. smtp.gmail.com
+        value: smtp-relay.brevo.com
       - key: SMTP_PORT
         value: 587
       - key: SMTP_USERNAME
-        sync: false  # SMTP login email
+        sync: false  # Brevo SMTP login
       - key: SMTP_PASSWORD
-        sync: false  # App password / SMTP password
+        sync: false  # Brevo SMTP key
       - key: SMTP_FROM_EMAIL
         sync: false  # Sender email
       - key: SMTP_USE_TLS
@@ -45,7 +45,7 @@ services:
       - key: SMTP_FORCE_IPV4
         value: true
       - key: EMAIL_PROVIDER
-        value: auto
+        value: brevo
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_API_URL
