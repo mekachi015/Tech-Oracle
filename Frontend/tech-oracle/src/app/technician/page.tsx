@@ -13,12 +13,20 @@ import {
     Typography,
     Container,
     Alert,
+    IconButton,
+    InputAdornment,
 } from '@mui/material';
-import { Lock as LockIcon, Home as HomeIcon } from '@mui/icons-material';
+import {
+    Lock as LockIcon,
+    Home as HomeIcon,
+    Visibility as VisibilityIcon,
+    VisibilityOff as VisibilityOffIcon,
+} from '@mui/icons-material';
 
 export default function TechnicianPage() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -97,12 +105,25 @@ export default function TechnicianPage() {
                             <form onSubmit={handleLogin}>
                                 <TextField
                                     fullWidth
-                                    type="password"
+                                    type={showPassword ? 'text' : 'password'}
                                     label="Password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     variant="outlined"
                                     autoFocus
+                                    InputProps={{
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <IconButton
+                                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                                    onClick={() => setShowPassword((prev) => !prev)}
+                                                    edge="end"
+                                                >
+                                                    {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                                                </IconButton>
+                                            </InputAdornment>
+                                        ),
+                                    }}
                                     sx={{ mb: 3 }}
                                 />
                                 

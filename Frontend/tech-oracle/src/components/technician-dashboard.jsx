@@ -16,6 +16,7 @@ import {
   Button,
   CircularProgress,
   Alert,
+  TextField,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -258,6 +259,17 @@ const TechnicianDashboard = () => {
   const [selectedGuide, setSelectedGuide] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [generatingGuideId, setGeneratingGuideId] = useState(null);
+  const [searchRepairNumber, setSearchRepairNumber] = useState('');
+
+  const normalizedQuery = searchRepairNumber.trim().toUpperCase();
+  const filteredRecords = repairRecords.filter((record) => {
+    if (!normalizedQuery) {
+      return true;
+    }
+    const repairNumber = (record.repairNumber || '').toUpperCase();
+    const fallbackId = String(record._id || '').toUpperCase();
+    return repairNumber.includes(normalizedQuery) || fallbackId.includes(normalizedQuery);
+  });
 
   useEffect(() => {
     fetchRepairRecords();
@@ -354,6 +366,15 @@ const TechnicianDashboard = () => {
       <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
         Technician Dashboard
       </Typography>
+
+      <TextField
+        fullWidth
+        label="Search by Repair Number"
+        placeholder="e.g. TOR-260322-K9M4"
+        value={searchRepairNumber}
+        onChange={(e) => setSearchRepairNumber(e.target.value)}
+        sx={{ mb: 2 }}
+      />
       
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -361,9 +382,9 @@ const TechnicianDashboard = () => {
         </Alert>
       )}
 
-      {repairRecords.length === 0 && !loading && (
+      {filteredRecords.length === 0 && !loading && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          No repair records found. Waiting for customer submissions.
+          No repair records found for that repair number.
         </Alert>
       )}
 
@@ -374,6 +395,7 @@ const TechnicianDashboard = () => {
             <TableHead>
               <TableRow>
                 <TableCell>Date</TableCell>
+                <TableCell>Repair Number</TableCell>
                 <TableCell>Brand & Model</TableCell>
                 <TableCell>Issue</TableCell>
                 <TableCell>Specifications</TableCell>
@@ -382,10 +404,15 @@ const TechnicianDashboard = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {repairRecords.map((record) => (
+              {filteredRecords.map((record) => (
                 <TableRow key={record._id}>
                   <TableCell>
                     {new Date(record.timestamp).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      {record.repairNumber || record._id}
+                    </Typography>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
@@ -459,11 +486,15 @@ const TechnicianDashboard = () => {
 
       {/* Mobile Card View */}
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-        {repairRecords.map((record) => (
+        {filteredRecords.map((record) => (
           <Card key={record._id} sx={{ mb: 2, border: '1px solid #e0e0e0' }}>
             <CardContent>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 {new Date(record.timestamp).toLocaleDateString()}
+              </Typography>
+
+              <Typography variant="body2" sx={{ fontWeight: 700, mb: 1 }}>
+                Repair Number: {record.repairNumber || record._id}
               </Typography>
               
               <Typography variant="h6" gutterBottom sx={{ fontSize: '1.1rem', fontWeight: 600 }}>

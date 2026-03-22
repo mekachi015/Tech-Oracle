@@ -353,7 +353,8 @@ const UserForm = () => {
                 }
 
                 const data = await response.json();
-                setRepairGuide('Repair request submitted successfully! Your repair record ID is: ' + data._id);
+                const repairNumber = data.repairNumber || data._id;
+                setRepairGuide('Repair request submitted successfully! Your repair number is: ' + repairNumber);
             } catch (err) {
                 console.error('Error submitting repair request:', err);
                 setError(err.message || 'An unexpected error occurred.');
