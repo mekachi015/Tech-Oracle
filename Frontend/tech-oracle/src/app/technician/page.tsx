@@ -391,40 +391,76 @@ export default function TechnicianPage() {
         <MUIProvider>
             <ClientWrapper>
             <Box sx={{ position: 'relative' }}>
-                <Box sx={{ 
-                    position: { xs: 'relative', sm: 'absolute' },
-                    top: { sm: 16 },
-                    right: { sm: 16 },
-                    zIndex: 1000,
-                    display: 'flex',
-                    gap: 1,
-                    justifyContent: { xs: 'center', sm: 'flex-end' },
-                    p: { xs: 2, sm: 0 },
-                    flexWrap: 'wrap'
-                }}>
-                    <Link href="/" style={{ textDecoration: 'none' }}>
+                <Box className="tech-dashboard-top-actions">
+                    <Link href="/" className="tech-dashboard-top-button-link">
                         <Button
-                            variant="outlined"
-                            color="primary"
-                            size="small"
+                            className="tech-dashboard-top-button"
                             startIcon={<HomeIcon />}
-                            sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: { xs: 120 } }}
                         >
                             Home
                         </Button>
                     </Link>
                     <Button
-                        variant="outlined"
-                        color="error"
+                        className="tech-dashboard-top-button tech-dashboard-logout-button"
                         onClick={handleLogout}
-                        size="small"
-                        sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: { xs: 120 } }}
                     >
                         Logout
                     </Button>
                 </Box>
                 <TechnicianDashboard />
             </Box>
+            <style jsx global>{`
+                .tech-dashboard-top-actions {
+                    position: fixed;
+                    top: 24px;
+                    right: 24px;
+                    z-index: 999;
+                    display: flex;
+                    gap: 10px;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 999px;
+                    padding: 0.35rem 0.7rem;
+                    background: rgba(9, 13, 35, 0.65);
+                    border: 1px solid rgba(120, 160, 255, 0.42);
+                    backdrop-filter: blur(12px);
+                    -webkit-backdrop-filter: blur(12px);
+                    box-shadow: 0 12px 25px rgba(4, 12, 42, 0.30);
+                    transition: transform 0.2s ease, background 0.2s ease;
+                }
+
+                .tech-dashboard-top-actions:hover {
+                    transform: translateY(-1px);
+                    background: rgba(7, 12, 30, 0.82);
+                }
+
+                .tech-dashboard-top-button,
+                .tech-dashboard-top-button-link {
+                    font-weight: 700;
+                    color: #e7f1ff !important;
+                    border-radius: 999px !important;
+                    background: rgba(21, 33, 89, 0.82) !important;
+                    border: 1px solid rgba(134, 190, 255, 0.55) !important;
+                    padding: 0.55rem 1rem !important;
+                    text-transform: none !important;
+                    box-shadow: 0 8px 20px rgba(35, 74, 160, 0.33);
+                }
+
+                .tech-dashboard-top-button:hover {
+                    background: rgba(34, 69, 147, 0.95) !important;
+                    border-color: rgba(174, 216, 255, 0.9) !important;
+                }
+
+                .tech-dashboard-logout-button {
+                    background: rgba(205, 83, 83, 0.24) !important;
+                    border-color: rgba(255, 120, 120, 0.72) !important;
+                    color: #ffebeb !important;
+                }
+
+                .tech-dashboard-logout-button:hover {
+                    background: rgba(235, 90, 90, 0.38) !important;
+                }
+            `}</style>
         </ClientWrapper>
         </MUIProvider>
     );
