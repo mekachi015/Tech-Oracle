@@ -13,8 +13,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tech Oracle",
+  title: "Tech-Oracle",
   description: "Dedicated AI Assistant for Me as a Technician",
+  icons: {
+    icon: [
+      { url: "/techoracle_white.png", type: "image/x-icon" }
+      
+    ],
+  },
 };
 
 export default function RootLayout({
