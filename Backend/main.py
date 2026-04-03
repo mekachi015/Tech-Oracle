@@ -903,16 +903,28 @@ DETAIL REQUIREMENTS:
 - If data is missing, make a reasonable assumption and state the assumption in the line.
 
 SOURCING SECTION RULES:
-- Identify every replaceable component likely needed for this specific repair (e.g. RAM module, display cable, battery, SSD, thermal paste).
-- For each component, output ONE line using this EXACT pipe-delimited format:
+- Identify every replaceable component likely needed (e.g., "Crucial 8GB DDR4 3200MHz SODIMM").
+- For RETAILER_URL: You MUST generate a functional Search URL for the specific retailer that leads directly to the results for that part.
+- Do NOT hallucinate deep product-specific IDs (e.g., /p/12345). Use the Search Query format.
+- Use ONLY these retailers and their specific URL patterns:
+  * Wootware: https://www.wootware.co.za/catalogsearch/result/?q=[QUERY]
+  * Takealot: https://www.takealot.com/all?qsearch=[QUERY]
+  * Evetech: https://www.evetech.co.za/Search.aspx?Query=[QUERY]
+  * GeeWiz: https://www.geewiz.co.za/search?controller=search&s=[QUERY]
+  * Rebel Tech: https://www.rebeltech.co.za/?s=[QUERY]&post_type=product
+  * Laptop Solutions: https://laptopsolutions.co.za/?s=[QUERY]&post_type=product
+
+- Format the [QUERY] by replacing spaces with '+' or '%20'.
+- OUTPUT FORMAT (Pipe-Delimited):
   COMPONENT_NAME | COMPATIBILITY_NOTE | ESTIMATED_PRICE_ZAR | RETAILER_NAME | RETAILER_URL
-- COMPONENT_NAME: full descriptive name (e.g. "16GB DDR4 3200MHz SODIMM RAM")
-- COMPATIBILITY_NOTE: one sentence explaining why this part fits this exact model/spec
-- ESTIMATED_PRICE_ZAR: realistic South African retail price as a number only (e.g. 1299)
-- RETAILER_NAME: one of: Wootware, Takealot, Evetech, Creativity, Pinnacle, Rebel Tech
-- RETAILER_URL: a real, plausible URL to that retailer's search or category page for this part
-- Prioritise best-value parts over premium brands. Suggest 2 to 5 components maximum.
-- Only include components that are realistically replaceable by a technician.
+
+Example:
+16GB DDR4 3200MHz RAM | Matches the SODIMM slot and speed for the Dell Inspiron 3511 | 850 | Wootware | https://www.wootware.co.za/catalogsearch/result/?q=16GB+DDR4+3200MHz+SODIMM
+
+CRITICAL: Ensure the [QUERY] in the URL is URL-encoded. For example, replace spaces with '+' and special characters like '#' with '%23'.
+**SOURCING_START**
+[Your generated components here]
+**SOURCING_END**
 
 You MUST respond in EXACTLY this format:
 
