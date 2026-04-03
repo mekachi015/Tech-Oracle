@@ -395,7 +395,7 @@ export default function TechnicianPage() {
                     position: 'relative',
                     width: '100%',
                     display: 'flex',
-                    gap: 3,
+                    gap: 5,
                     justifyContent: 'center',
                     alignItems: 'center',
                     p: 1,
