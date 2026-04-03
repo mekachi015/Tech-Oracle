@@ -366,6 +366,13 @@ const UserForm = () => {
 
     return (
         <div className="form-container">
+            {/* Ambient background orbs */}
+            <div className="form-orb form-orb-1"></div>
+            <div className="form-orb form-orb-2"></div>
+
+            {/* Grid lines */}
+            <div className="form-grid"></div>
+
             <div className="form-header">
                 <h1>Tech Oracle</h1>
                 <p>AI-Powered Device Repair Assistant</p>

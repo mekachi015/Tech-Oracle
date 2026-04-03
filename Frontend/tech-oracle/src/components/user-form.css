@@ -1,56 +1,134 @@
-/* Container */
+/* Import fonts to match hero section */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+/* Container - Dark theme to match hero */
 .form-container {
     max-width: 600px;
     margin: 0 auto;
-    padding: 20px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    padding: 40px 24px;
+    font-family: 'DM Sans', sans-serif;
+    position: relative;
+    min-height: 100vh;
+    background: #05080f;
+    color: #f0f4ff;
+    overflow: hidden;
 }
 
-/* Header */
+/* Ambient background orbs like hero section */
+.form-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    will-change: transform;
+}
+.form-orb-1 {
+    width: 320px; height: 320px;
+    background: radial-gradient(circle, rgba(37,99,235,0.15) 0%, transparent 70%);
+    top: -80px; right: -100px;
+    animation: formOrbFloat1 18s ease-in-out infinite;
+}
+.form-orb-2 {
+    width: 240px; height: 240px;
+    background: radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%);
+    bottom: -60px; left: -80px;
+    animation: formOrbFloat2 22s ease-in-out infinite;
+}
+
+@keyframes formOrbFloat1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-30px, 20px) scale(1.05); }
+}
+@keyframes formOrbFloat2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(25px, -30px) scale(1.03); }
+}
+
+/* Grid lines like hero section */
+.form-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+}
+
+/* Header - Glassmorphism style */
 .form-header {
     text-align: center;
-    margin-bottom: 30px;
-    padding: 30px 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 8px;
+    margin-bottom: 40px;
+    padding: 40px 30px;
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 16px;
+    position: relative;
+    z-index: 1;
 }
 
 .form-header h1 {
-    margin: 0 0 10px 0;
-    font-size: 2rem;
-    font-weight: 700;
+    margin: 0 0 16px 0;
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 4vw, 2.5rem);
+    font-weight: 800;
+    background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 55%, #67e8f9 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
 }
 
 .form-header p {
     margin: 0;
-    font-size: 1.1rem;
-    opacity: 0.95;
+    font-size: clamp(0.95rem, 1.8vw, 1.1rem);
+    font-weight: 300;
+    color: #94a3b8;
+    line-height: 1.6;
 }
 
-/* Step Indicator */
+/* Step Indicator - Glassmorphism */
 .step-indicator {
-    background: #f5f5f5;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 25px;
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.09);
+    padding: 20px;
+    border-radius: 16px;
+    margin-bottom: 30px;
     text-align: center;
+    position: relative;
+    z-index: 1;
 }
 
 .step-indicator p {
     margin: 0;
-    font-weight: 600;
-    color: #333;
-    font-size: 1rem;
+    font-weight: 500;
+    color: #f0f4ff;
+    font-size: 1.1rem;
+    letter-spacing: 0.02em;
 }
 
-/* Form */
+/* Form - Glassmorphism */
 .repair-form {
-    background: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 25px;
-    margin-bottom: 20px;
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 16px;
+    padding: 30px;
+    margin-bottom: 30px;
+    position: relative;
+    z-index: 1;
+    transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+}
+
+.repair-form:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.12);
 }
 
 .form-content {
@@ -59,90 +137,108 @@
 
 /* Form Sections */
 .form-section h2 {
-    font-size: 1.5rem;
-    color: #333;
-    margin: 0 0 10px 0;
-    font-weight: 600;
+    font-family: 'Syne', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #f0f4ff;
+    margin: 0 0 12px 0;
+    letter-spacing: -0.02em;
 }
 
 .form-section > p {
-    color: #666;
-    font-size: 0.9rem;
-    margin: 0 0 20px 0;
+    color: #94a3b8;
+    font-size: 0.95rem;
+    font-weight: 300;
+    margin: 0 0 24px 0;
+    line-height: 1.6;
 }
 
 /* Form Groups */
 .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
     display: flex;
     flex-direction: column;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     font-weight: 500;
-    color: #333;
+    color: #f0f4ff;
     font-size: 0.95rem;
+    letter-spacing: 0.01em;
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
     width: 100%;
-    padding: 12px;
+    padding: 16px 18px;
     font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    color: #f0f4ff;
     box-sizing: border-box;
-    font-family: inherit;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: all 0.25s ease;
+}
+
+.form-group input::placeholder,
+.form-group select::placeholder,
+.form-group textarea::placeholder {
+    color: #64748b;
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: #60a5fa;
+    background: rgba(255,255,255,0.08);
+    box-shadow: 0 0 0 3px rgba(96,165,250,0.15);
 }
 
 .form-group textarea {
     resize: vertical;
-    min-height: 80px;
+    min-height: 100px;
 }
 
 .form-group small {
     display: block;
-    margin-top: 6px;
+    margin-top: 8px;
     font-size: 0.85rem;
-    color: #666;
+    color: #64748b;
+    font-weight: 300;
 }
 
 .form-group input[type="file"] {
-    padding: 10px;
-    border: 2px dashed #ccc;
-    background: #f9f9f9;
+    padding: 14px 18px;
+    border: 2px dashed rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.03);
     cursor: pointer;
+    color: #94a3b8;
 }
 
 .form-group input[type="file"]:hover {
-    border-color: #667eea;
-    background: #f0f0f0;
+    border-color: #60a5fa;
+    background: rgba(255,255,255,0.05);
 }
 
 /* File List */
 .file-list {
-    margin-top: 15px;
-    padding: 15px;
-    background: #f9f9f9;
-    border-radius: 6px;
+    margin-top: 18px;
+    padding: 20px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
 }
 
 .file-list p {
-    margin: 0 0 10px 0;
+    margin: 0 0 12px 0;
     font-weight: 500;
-    color: #333;
+    color: #f0f4ff;
+    font-size: 0.95rem;
 }
 
 .file-list ul {
@@ -151,52 +247,134 @@
 }
 
 .file-list li {
-    margin-bottom: 5px;
-    color: #555;
+    margin-bottom: 6px;
+    color: #94a3b8;
+    font-size: 0.9rem;
 }
 
 /* Buttons */
 .form-buttons {
     display: flex;
     justify-content: space-between;
-    gap: 15px;
-    margin-top: 25px;
+    gap: 16px;
+    margin-top: 32px;
 }
 
 .btn {
     flex: 1;
-    padding: 14px 24px;
+    padding: 16px 28px;
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
     border: none;
-    border-radius: 6px;
+    border-radius: 100px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.25s;
 }
 
 .btn:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    color: #fff;
+    box-shadow: 0 4px 24px rgba(37,99,235,0.35);
 }
 
 .btn-primary:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 8px 32px rgba(37,99,235,0.5);
+}
+
+.btn-primary:hover:not(:disabled)::before {
+    opacity: 1;
+}
+
+.btn-primary:active {
+    transform: translateY(0);
 }
 
 .btn-secondary {
-    background: #f5f5f5;
-    color: #333;
-    border: 1px solid #ddd;
+    background: rgba(255,255,255,0.06);
+    color: #f0f4ff;
+    border: 1px solid rgba(255,255,255,0.12);
 }
 
 .btn-secondary:hover:not(:disabled) {
-    background: #e8e8e8;
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+}
+
+/* Loading and Error States */
+.loading, .error {
+    text-align: center;
+    padding: 40px 20px;
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 16px;
+    margin: 20px 0;
+}
+
+.loading p, .error p {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #94a3b8;
+}
+
+.error {
+    background: rgba(239,68,68,0.1);
+    border-color: rgba(239,68,68,0.2);
+}
+
+.error p {
+    color: #fca5a5;
+}
+
+/* Repair Guide Display */
+.repair-guide {
+    margin-top: 30px;
+    padding: 24px;
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.repair-guide h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f0f4ff;
+    margin: 0 0 16px 0;
+}
+
+.repair-guide pre {
+    background: rgba(0,0,0,0.3);
+    padding: 16px;
+    border-radius: 8px;
+    color: #e2e8f0;
+    font-family: 'DM Sans', monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 
 /* Messages */
