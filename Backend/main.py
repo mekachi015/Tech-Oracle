@@ -1,4 +1,3 @@
-# main.py
 import datetime
 from datetime import timedelta
 import logging
@@ -881,10 +880,11 @@ async def add_to_db(request: Request, request_data: DeviceRepairRequest, backgro
 
 def create_structured_prompt(device_info: RepairRecordInDB) -> str:
     """
-    Creates a structured prompt that will generate consistently formatted responses
+    Creates a structured prompt that will generate consistently formatted responses,
+    including a Sourcing & Compatibility section with South African retailer links.
     """
     prompt_template = """
-You are a senior device repair technician and trainer. Create a detailed, practical repair guide using EXACTLY this format with these EXACT delimiters.
+You are a senior device repair technician and trainer based in South Africa. Create a detailed, practical repair guide using EXACTLY this format with these EXACT delimiters.
 
 CRITICAL FORMATTING RULES:
 1. Use EXACTLY these delimiters (including the asterisks): **COMPLEXITY_START**, **COMPLEXITY_END**, etc.
@@ -901,6 +901,30 @@ DETAIL REQUIREMENTS:
 - Each testing line must include: test action, pass criteria, and what a failure indicates.
 - Mention likely connector names, screws, cables, modules, voltages, temperatures, or diagnostics where relevant.
 - If data is missing, make a reasonable assumption and state the assumption in the line.
+
+SOURCING SECTION RULES:
+- Identify every replaceable component likely needed (e.g., "Crucial 8GB DDR4 3200MHz SODIMM").
+- For RETAILER_URL: You MUST generate a functional Search URL for the specific retailer that leads directly to the results for that part.
+- Do NOT hallucinate deep product-specific IDs (e.g., /p/12345). Use the Search Query format.
+- Use ONLY these retailers and their specific URL patterns:
+  * Wootware: https://www.wootware.co.za/catalogsearch/result/?q=[QUERY]
+  * Takealot: https://www.takealot.com/all?qsearch=[QUERY]
+  * Evetech: https://www.evetech.co.za/Search.aspx?Query=[QUERY]
+  * GeeWiz: https://www.geewiz.co.za/search?controller=search&s=[QUERY]
+  * Rebel Tech: https://www.rebeltech.co.za/?s=[QUERY]&post_type=product
+  * Laptop Solutions: https://laptopsolutions.co.za/?s=[QUERY]&post_type=product
+
+- Format the [QUERY] by replacing spaces with '+' or '%20'.
+- OUTPUT FORMAT (Pipe-Delimited):
+  COMPONENT_NAME | COMPATIBILITY_NOTE | ESTIMATED_PRICE_ZAR | RETAILER_NAME | RETAILER_URL
+
+Example:
+16GB DDR4 3200MHz RAM | Matches the SODIMM slot and speed for the Dell Inspiron 3511 | 850 | Wootware | https://www.wootware.co.za/catalogsearch/result/?q=16GB+DDR4+3200MHz+SODIMM
+
+CRITICAL: Ensure the [QUERY] in the URL is URL-encoded. For example, replace spaces with '+' and special characters like '#' with '%23'.
+**SOURCING_START**
+[Your generated components here]
+**SOURCING_END**
 
 You MUST respond in EXACTLY this format:
 
@@ -931,6 +955,10 @@ Test display at different brightness levels
 Open and close the lid multiple times to verify cable connection
 Run a display diagnostic test if available
 **TESTING_END**
+
+**SOURCING_START**
+Replacement Display Cable for Dell XPS 15 | Matches the EDP connector layout used in this model series | 450 | Wootware | https://www.wootware.co.za/components/cables
+**SOURCING_END**
 
 Now create a repair guide for this device following the EXACT format above:
 
@@ -963,16 +991,14 @@ Device Information:
     specs = "\n".join(specs_list) if specs_list else ""
 
     return prompt_template.format(
-        complexity="[COMPLEXITY_CONTENT]",  # Placeholder
-        tools="[TOOLS_CONTENT]",  # Placeholder
-        steps="[STEPS_CONTENT]",  # Placeholder
-        testing="[TESTING_CONTENT]",  # Placeholder
         brand=device_info.deviceBrand,
         model=device_info.deviceModel,
         issue=device_info.deviceIssue,
         additional_info=additional_info,
         specs=specs,
     )
+
+
 @app.post("/generate_guide_for_record/{record_id}", response_model=RepairRecordInDB, summary="Generate and save an AI repair guide for an existing record")
 @limiter.limit("10/minute")  # AI generation is resource-intensive
 async def generate_guide_for_record(request: Request, record_id: str, token_payload: dict = Depends(verify_token)):
@@ -1023,17 +1049,21 @@ async def generate_guide_for_record(request: Request, record_id: str, token_payl
                 detail="AI service error. Please try again later."
             )
         
-        # Clean up the guide to ensure consistent formatting
-        # Remove any text before first delimiter and after last delimiter
+        # Clean up the guide to ensure consistent formatting.
+        # Trim to the content between the first and last expected delimiters.
         import re
         
-        # Find the first delimiter and last delimiter
         first_delimiter = generated_guide.find('**COMPLEXITY_START**')
-        last_delimiter = generated_guide.rfind('**TESTING_END**')
+        # The SOURCING section is now the final section in the guide.
+        last_delimiter = generated_guide.rfind('**SOURCING_END**')
         
         if first_delimiter != -1 and last_delimiter != -1:
-            # Extract only the content between first and last delimiter (inclusive)
-            generated_guide = generated_guide[first_delimiter:last_delimiter + len('**TESTING_END**')].strip()
+            generated_guide = generated_guide[first_delimiter:last_delimiter + len('**SOURCING_END**')].strip()
+        elif first_delimiter != -1:
+            # Fallback: SOURCING section may be absent in some model outputs; trim from start only.
+            last_testing = generated_guide.rfind('**TESTING_END**')
+            if last_testing != -1:
+                generated_guide = generated_guide[first_delimiter:last_testing + len('**TESTING_END**')].strip()
         
         # Store the formatted guide
         update_data = {
@@ -1150,3 +1180,4 @@ async def send_test_email(request: Request, token_payload: dict = Depends(verify
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"SMTP test failed: {str(e)}",
         )
+        

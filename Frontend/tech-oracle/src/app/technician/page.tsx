@@ -391,6 +391,8 @@ export default function TechnicianPage() {
         <MUIProvider>
             <ClientWrapper>
             <Box sx={{ position: 'relative' }}>
+                <Box className="tech-dashboard-top-actions">
+                    <Link href="/" className="tech-dashboard-top-button-link">
                 <Box sx={{ 
                     position: 'relative',
                     width: '100%',
@@ -407,27 +409,88 @@ export default function TechnicianPage() {
                 }}>
                     <Link href="/" style={{ textDecoration: 'none' }}>
                         <Button
-                            variant="outlined"
-                            color="primary"
-                            size="small"
+                            className="tech-dashboard-top-button"
                             startIcon={<HomeIcon />}
-                            sx={{ minWidth: 120, color: '#e7f1ff', borderColor: '#7ca7ff' }}
+                            sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: { xs: 120 } }}
                         >
                             Home
                         </Button>
                     </Link>
                     <Button
-                        variant="outlined"
-                        color="error"
+                        className="tech-dashboard-top-button tech-dashboard-logout-button"
                         onClick={handleLogout}
                         size="small"
-                        sx={{ minWidth: 120, color: '#ffdddd', borderColor: '#ff7b7b' }}
+                        sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: { xs: 120 } }}
                     >
                         Logout
                     </Button>
                 </Box>
                 <TechnicianDashboard />
             </Box>
+            <style jsx global>{`
+                .tech-dashboard-top-actions {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    width: 100%;
+                    z-index: 1100;
+                    display: flex;
+                    justify-content: center;
+                    padding: 0.65rem 1em;
+                    background: rgba(9, 13, 35, 0.75);
+                    border-bottom: 1px solid rgba(120, 160, 255, 0.35);
+                    backdrop-filter: blur(14px);
+                    -webkit-backdrop-filter: blur(14px);
+                    box-shadow: 0 12px 32px rgba(4, 12, 42, 0.35);
+                    transition: transform 0.2s ease, background 0.2s ease;
+                }
+
+                .tech-dashboard-top-actions > * {
+                    flex-shrink: 0;
+                }
+
+                .tech-dashboard-top-actions .tech-dashboard-top-button-link,
+                .tech-dashboard-top-actions .tech-dashboard-top-button {
+                    min-width: 120px;
+                }
+
+                .tech-dashboard-header {
+                    padding-top: 70px; /* create space for the fixed top action bar */
+                }
+
+                .tech-dashboard-top-actions:hover {
+                    transform: translateY(-1px);
+                    background: rgba(7, 12, 30, 0.82);
+                }
+
+                .tech-dashboard-top-button,
+                .tech-dashboard-top-button-link {
+                    font-weight: 700;
+                    color: #e7f1ff !important;
+                    border-radius: 999px !important;
+                    background: rgba(21, 33, 89, 0.82) !important;
+                    border: 1px solid rgba(134, 190, 255, 0.55) !important;
+                    padding: 0.55rem 1rem !important;
+                    text-transform: none !important;
+                    box-shadow: 0 8px 20px rgba(35, 74, 160, 0.33);
+                }
+
+                .tech-dashboard-top-button:hover {
+                    background: rgba(34, 69, 147, 0.95) !important;
+                    border-color: rgba(174, 216, 255, 0.9) !important;
+                }
+
+                .tech-dashboard-logout-button {
+                    background: rgba(205, 83, 83, 0.24) !important;
+                    border-color: rgba(255, 120, 120, 0.72) !important;
+                    color: #ffebeb !important;
+                }
+
+                .tech-dashboard-logout-button:hover {
+                    background: rgba(235, 90, 90, 0.38) !important;
+                }
+            `}</style>
         </ClientWrapper>
         </MUIProvider>
     );
