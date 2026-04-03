@@ -392,14 +392,17 @@ export default function TechnicianPage() {
             <ClientWrapper>
             <Box sx={{ position: 'relative' }}>
                 <Box sx={{ 
-                    position: { xs: 'relative', sm: 'absolute' },
-                    top: { sm: 16 },
-                    right: { sm: 16 },
-                    zIndex: 1000,
+                    position: 'relative',
+                    width: '100%',
                     display: 'flex',
                     gap: 1,
-                    justifyContent: { xs: 'center', sm: 'flex-end' },
-                    p: { xs: 2, sm: 0 },
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    p: 1,
+                    backgroundColor: 'rgba(9, 13, 35, 0.85)',
+                    borderBottom: '1px solid rgba(120, 160, 255, 0.35)',
+                    boxShadow: '0 10px 24px rgba(0, 0, 0, 0.35)',
+                    backdropFilter: 'blur(10px)',
                     flexWrap: 'wrap'
                 }}>
                     <Link href="/" style={{ textDecoration: 'none' }}>
@@ -408,7 +411,7 @@ export default function TechnicianPage() {
                             color="primary"
                             size="small"
                             startIcon={<HomeIcon />}
-                            sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: { xs: 120 } }}
+                            sx={{ minWidth: 120, color: '#e7f1ff', borderColor: '#7ca7ff' }}
                         >
                             Home
                         </Button>
@@ -418,7 +421,7 @@ export default function TechnicianPage() {
                         color="error"
                         onClick={handleLogout}
                         size="small"
-                        sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: { xs: 120 } }}
+                        sx={{ minWidth: 120, color: '#ffdddd', borderColor: '#ff7b7b' }}
                     >
                         Logout
                     </Button>
