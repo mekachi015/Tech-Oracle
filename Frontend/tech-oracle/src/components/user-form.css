@@ -1,6 +1,10 @@
 /* Import fonts to match hero section */
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
 
+html, body {
+    background: #05080f;
+   
+}
 /* Container - Dark theme to match hero */
 .form-container {
     max-width: 600px;
@@ -115,6 +119,7 @@
 /* Form - Glassmorphism */
 .repair-form {
     background: rgba(255,255,255,0.04);
+   
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(255,255,255,0.09);
@@ -130,6 +135,28 @@
     background: rgba(255,255,255,0.06);
     border-color: rgba(255,255,255,0.12);
 }
+
+@media (min-width: 769px) {
+    .repair-form {
+        background: #05080f;
+        border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        background: #0b1223;
+        border: 1px solid rgba(255,255,255,0.10);
+        color: #f0f4ff;
+    }
+
+    .form-group input::placeholder,
+    .form-group select::placeholder,
+    .form-group textarea::placeholder {
+        color: #64748b;
+    }
+}
+
 
 .form-content {
     margin-bottom: 30px;
