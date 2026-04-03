@@ -392,38 +392,38 @@ export default function TechnicianPage() {
             <ClientWrapper>
             <Box sx={{ position: 'relative' }}>
                 <Box className="tech-dashboard-top-actions">
-                    <Link href="/" className="tech-dashboard-top-button-link">
-                <Box sx={{ 
-                    position: 'relative',
-                    width: '100%',
-                    display: 'flex',
-                    gap: 5,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    p: 1,
-                    backgroundColor: 'rgba(9, 13, 35, 0.85)',
-                    borderBottom: '1px solid rgba(120, 160, 255, 0.35)',
-                    boxShadow: '0 10px 24px rgba(0, 0, 0, 0.35)',
-                    backdropFilter: 'blur(10px)',
-                    flexWrap: 'wrap'
-                }}>
-                    <Link href="/" style={{ textDecoration: 'none' }}>
+                    <Box sx={{ 
+                        position: 'relative',
+                        width: '100%',
+                        display: 'flex',
+                        gap: 5,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        p: 1,
+                        backgroundColor: 'rgba(9, 13, 35, 0.85)',
+                        borderBottom: '1px solid rgba(120, 160, 255, 0.35)',
+                        boxShadow: '0 10px 24px rgba(0, 0, 0, 0.35)',
+                        backdropFilter: 'blur(10px)',
+                        flexWrap: 'wrap'
+                    }}>
+                        <Link href="/" style={{ textDecoration: 'none' }}>
+                            <Button
+                                className="tech-dashboard-top-button"
+                                startIcon={<HomeIcon />}
+                                sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: { xs: 120 } }}
+                            >
+                                Home
+                            </Button>
+                        </Link>
                         <Button
-                            className="tech-dashboard-top-button"
-                            startIcon={<HomeIcon />}
+                            className="tech-dashboard-top-button tech-dashboard-logout-button"
+                            onClick={handleLogout}
+                            size="small"
                             sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: { xs: 120 } }}
                         >
-                            Home
+                            Logout
                         </Button>
-                    </Link>
-                    <Button
-                        className="tech-dashboard-top-button tech-dashboard-logout-button"
-                        onClick={handleLogout}
-                        size="small"
-                        sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: { xs: 120 } }}
-                    >
-                        Logout
-                    </Button>
+                    </Box>
                 </Box>
                 <TechnicianDashboard />
             </Box>
