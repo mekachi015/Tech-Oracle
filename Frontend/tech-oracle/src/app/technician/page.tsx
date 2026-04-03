@@ -395,9 +395,8 @@ export default function TechnicianPage() {
                     position: 'relative',
                     width: '100%',
                     display: 'flex',
-
-                    gap: 1,
-                    justifyContent: 'space-between',
+                    gap: 3,
+                    justifyContent: 'center',
                     alignItems: 'center',
                     p: 1,
                     backgroundColor: 'rgba(9, 13, 35, 0.85)',
