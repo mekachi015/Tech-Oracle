@@ -1,6 +1,6 @@
 "use client"
 import UserForm from "@/components/user-form";
-import HeroSection from "@/components/HeroSection";
+import HeroSection from "@/components/heroSection";
 import ClientWrapper from "./clientWrapper";
 
 export default function Home() {
