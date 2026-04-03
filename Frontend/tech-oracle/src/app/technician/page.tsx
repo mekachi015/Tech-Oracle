@@ -412,22 +412,33 @@ export default function TechnicianPage() {
             <style jsx global>{`
                 .tech-dashboard-top-actions {
                     position: absolute;
-                    top: 8px;
-                    left: 50%;
-                    transform: translateX(-50%);
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    width: 100%;
                     z-index: 1100;
                     display: flex;
-                    gap: 10px;
-                    align-items: center;
                     justify-content: center;
-                    border-radius: 999px;
-                    padding: 0.4rem 0.8rem;
-                    background: rgba(9, 13, 35, 0.80);
-                    border: 1px solid rgba(120, 160, 255, 0.55);
-                    backdrop-filter: blur(12px);
-                    -webkit-backdrop-filter: blur(12px);
-                    box-shadow: 0 14px 32px rgba(4, 12, 42, 0.38);
+                    padding: 0.65rem 1em;
+                    background: rgba(9, 13, 35, 0.75);
+                    border-bottom: 1px solid rgba(120, 160, 255, 0.35);
+                    backdrop-filter: blur(14px);
+                    -webkit-backdrop-filter: blur(14px);
+                    box-shadow: 0 12px 32px rgba(4, 12, 42, 0.35);
                     transition: transform 0.2s ease, background 0.2s ease;
+                }
+
+                .tech-dashboard-top-actions > * {
+                    flex-shrink: 0;
+                }
+
+                .tech-dashboard-top-actions .tech-dashboard-top-button-link,
+                .tech-dashboard-top-actions .tech-dashboard-top-button {
+                    min-width: 120px;
+                }
+
+                .tech-dashboard-header {
+                    padding-top: 70px; /* create space for the fixed top action bar */
                 }
 
                 .tech-dashboard-top-actions:hover {
