@@ -1,27 +1,6 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Card, 
-  CardContent, 
-  Typography, 
-  Grid,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Button,
-  CircularProgress,
-  Alert,
-  TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions
-} from '@mui/material';
+import './technician-dashboard.css';
 
 // RepairGuideFormatter Component (extracted from the artifact above)
 const RepairGuideFormatter = ({ repairGuide }) => {
@@ -128,12 +107,14 @@ const RepairGuideFormatter = ({ repairGuide }) => {
   }
 
   const cardStyle = {
-    backgroundColor: 'white',
-    border: '1px solid #e0e0e0',
-    borderRadius: '8px',
-    padding: '16px',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.09)',
+    borderRadius: '16px',
+    padding: '20px',
     marginBottom: '16px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    transition: 'transform 0.25s ease, border-color 0.25s ease, background 0.25s ease'
   };
 
   const headerStyle = {
@@ -141,9 +122,9 @@ const RepairGuideFormatter = ({ repairGuide }) => {
     alignItems: 'center',
     gap: '8px',
     marginBottom: '12px',
-    fontSize: '16px',
-    fontWeight: 'bold',
-    color: '#333'
+    fontSize: '1rem',
+    fontWeight: '600',
+    color: '#f0f4ff'
   };
 
   const chipStyle = (color, text) => ({
@@ -152,54 +133,55 @@ const RepairGuideFormatter = ({ repairGuide }) => {
     color: 'white',
     padding: '6px 12px',
     borderRadius: '20px',
-    fontSize: '13px',
-    fontWeight: 'bold'
+    fontSize: '0.85rem',
+    fontWeight: '600'
   });
 
   const stepStyle = {
     display: 'flex',
     alignItems: 'flex-start',
-    gap: '10px',
-    marginBottom: '10px',
-    padding: '6px 0'
+    gap: '12px',
+    marginBottom: '12px',
+    padding: '8px 0'
   };
 
   const stepNumberStyle = {
-    backgroundColor: '#2196f3',
+    background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
     color: 'white',
     borderRadius: '50%',
-    width: '24px',
-    height: '24px',
+    width: '28px',
+    height: '28px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '12px',
-    fontWeight: 'bold',
-    flexShrink: 0
+    fontSize: '0.8rem',
+    fontWeight: '600',
+    flexShrink: 0,
+    boxShadow: '0 2px 8px rgba(37,99,235,0.3)'
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div className="repair-guide-container">
       {/* Complexity Level */}
-      <div style={cardStyle}>
-        <div style={headerStyle}>
+      <div className="repair-guide-card">
+        <div className="repair-guide-header">
           <span>{getComplexityIcon(sections.complexity)}</span>
           <span>Complexity Level</span>
         </div>
-        <div style={chipStyle(getComplexityColor(sections.complexity), sections.complexity)}>
+        <div className="repair-guide-complexity">
           {sections.complexity}
         </div>
       </div>
 
       {/* Required Tools */}
-      <div style={cardStyle}>
-        <div style={headerStyle}>
+      <div className="repair-guide-card">
+        <div className="repair-guide-header">
           <span>🔧</span>
           <span>Required Tools & Components</span>
         </div>
-        <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px' }}>
+        <ul className="repair-guide-list">
           {sections.tools.map((tool, index) => (
-            <li key={index} style={{ marginBottom: '6px', lineHeight: '1.6', wordBreak: 'break-word' }}>
+            <li key={index}>
               {tool}
             </li>
           ))}
@@ -207,18 +189,18 @@ const RepairGuideFormatter = ({ repairGuide }) => {
       </div>
 
       {/* Step by Step Guide */}
-      <div style={cardStyle}>
-        <div style={headerStyle}>
+      <div className="repair-guide-card">
+        <div className="repair-guide-header">
           <span>📋</span>
           <span>Step-by-Step Repair Guide</span>
         </div>
         <div>
           {sections.stepByStep.map((step, index) => (
-            <div key={index} style={stepStyle}>
-              <div style={stepNumberStyle}>
+            <div key={index} className="repair-guide-step">
+              <div className="repair-guide-step-number">
                 {index + 1}
               </div>
-              <div style={{ flex: 1, lineHeight: '1.6', fontSize: '13px', wordBreak: 'break-word' }}>
+              <div className="repair-guide-step-content">
                 {step}
               </div>
             </div>
@@ -227,21 +209,18 @@ const RepairGuideFormatter = ({ repairGuide }) => {
       </div>
 
       {/* Testing Guide */}
-      <div style={cardStyle}>
-        <div style={headerStyle}>
+      <div className="repair-guide-card">
+        <div className="repair-guide-header">
           <span>✅</span>
           <span>Testing Guide</span>
         </div>
         <div>
           {sections.testing.map((test, index) => (
-            <div key={index} style={stepStyle}>
-              <div style={{
-                ...stepNumberStyle,
-                backgroundColor: '#4caf50'
-              }}>
+            <div key={index} className="repair-guide-step">
+              <div className="repair-guide-test-number">
                 {index + 1}
               </div>
-              <div style={{ flex: 1, lineHeight: '1.6', fontSize: '13px', wordBreak: 'break-word' }}>
+              <div className="repair-guide-step-content">
                 {test}
               </div>
             </div>
@@ -355,265 +334,236 @@ const TechnicianDashboard = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', padding: 3 }}>
-        <CircularProgress />
-      </Box>
+      <div className="tech-dashboard-loading">
+        <p>Loading repair records...</p>
+      </div>
     );
   }
 
   return (
-    <Box sx={{ padding: { xs: 2, sm: 3 } }}>
-      <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-        Technician Dashboard
-      </Typography>
+    <div className="tech-dashboard-container">
+      {/* Ambient background orbs */}
+      <div className="tech-dashboard-orb tech-dashboard-orb-1"></div>
+      <div className="tech-dashboard-orb tech-dashboard-orb-2"></div>
 
-      <TextField
-        fullWidth
-        label="Search by Repair Number"
-        placeholder="e.g. TOR-260322-K9M4"
-        value={searchRepairNumber}
-        onChange={(e) => setSearchRepairNumber(e.target.value)}
-        sx={{ mb: 2 }}
-      />
-      
+      {/* Grid lines */}
+      <div className="tech-dashboard-grid"></div>
+
+      <div className="tech-dashboard-header">
+        <h1 className="tech-dashboard-title">Technician Dashboard</h1>
+        <p className="tech-dashboard-subtitle">Manage and generate AI-powered repair guides</p>
+      </div>
+
+      <div className="tech-dashboard-search">
+        <input
+          type="text"
+          className="tech-dashboard-search-input"
+          placeholder="Search by Repair Number (e.g. TOR-260322-K9M4)"
+          value={searchRepairNumber}
+          onChange={(e) => setSearchRepairNumber(e.target.value)}
+        />
+      </div>
+
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
+        <div className="tech-dashboard-error">
+          <p>{error}</p>
+        </div>
       )}
 
       {filteredRecords.length === 0 && !loading && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          No repair records found for that repair number.
-        </Alert>
+        <div className="tech-dashboard-empty">
+          <p>No repair records found</p>
+          <span>Try adjusting your search or check if records exist.</span>
+        </div>
       )}
 
-      {/* Desktop Table View */}
-      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-        <TableContainer component={Paper}>
-          <Table sx={{ minWidth: 650 }}>
-            <TableHead>
-              <TableRow>
-                <TableCell>Date</TableCell>
-                <TableCell>Repair Number</TableCell>
-                <TableCell>Brand & Model</TableCell>
-                <TableCell>Issue</TableCell>
-                <TableCell>Specifications</TableCell>
-                <TableCell>Repair Guide Status</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredRecords.map((record) => (
-                <TableRow key={record._id}>
-                  <TableCell>
-                    {new Date(record.timestamp).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                      {record.repairNumber || record._id}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      Brand: {record.deviceBrand}<br/>
-                      Model: {record.deviceModel}<br/>
-                      {record.deviceModelNumber && `Model #: ${record.deviceModelNumber}`}<br/>
-                      {record.serialNumber && `Serial #: ${record.serialNumber}`}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {record.deviceIssue}
-                      {record.additionalInfo && (
-                        <><br/><em>Additional info: {record.additionalInfo}</em></>
-                      )}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {record.operatingSystem && `OS: ${record.operatingSystem}`}<br/>
-                      {record.ram && `RAM: ${record.ram}`}<br/>
-                      {record.storage && `Storage: ${record.storage}`}<br/>
-                      {record.processor && `CPU: ${record.processor}`}<br/>
-                      {record.graphicsCard && `GPU: ${record.graphicsCard}`}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    {record.repair_guide ? (
-                      <Typography variant="body2" color="success.main">
-                        ✅ Guide Generated
-                        <br/>
-                        <small>
-                          {new Date(record.guide_generated_at).toLocaleString()}
-                        </small>
-                      </Typography>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        ⏳ No guide generated yet
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-                      {!record.repair_guide ? (
-                        <Button 
-                          variant="contained" 
-                          size="small"
-                          onClick={() => generateGuide(record._id)}
-                          disabled={generatingGuideId === record._id}
-                          startIcon={generatingGuideId === record._id ? <CircularProgress size={16} color="inherit" /> : null}
-                        >
-                          {generatingGuideId === record._id ? 'Generating...' : 'Generate Guide'}
-                        </Button>
-                      ) : (
-                        <Button 
-                          variant="outlined" 
-                          size="small"
-                          onClick={() => handleViewGuide(record.repair_guide)}
-                        >
-                          View Guide
-                        </Button>
-                      )}
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Box>
-
-      {/* Mobile Card View */}
-      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+      {/* Records List */}
+      <div>
         {filteredRecords.map((record) => (
-          <Card key={record._id} sx={{ mb: 2, border: '1px solid #e0e0e0' }}>
-            <CardContent>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                {new Date(record.timestamp).toLocaleDateString()}
-              </Typography>
-
-              <Typography variant="body2" sx={{ fontWeight: 700, mb: 1 }}>
-                Repair Number: {record.repairNumber || record._id}
-              </Typography>
-              
-              <Typography variant="h6" gutterBottom sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
+          <div key={record._id} className="tech-dashboard-card">
+            <div className="tech-dashboard-card-header">
+              <h2 className="tech-dashboard-card-title">
                 {record.deviceBrand} {record.deviceModel}
-              </Typography>
-              
-              {record.deviceModelNumber && (
-                <Typography variant="body2" color="text.secondary">
-                  Model #: {record.deviceModelNumber}
-                </Typography>
+              </h2>
+              <span className="tech-dashboard-repair-number">
+                {record.repairNumber || record._id}
+              </span>
+            </div>
+
+            <div className="tech-dashboard-card-content">
+              <p><strong>Issue:</strong> {record.deviceIssue}</p>
+              {record.additionalInfo && (
+                <p><em>Additional info: {record.additionalInfo}</em></p>
               )}
-              
-              {record.serialNumber && (
-                <Typography variant="body2" color="text.secondary">
-                  Serial #: {record.serialNumber}
-                </Typography>
+
+              {(record.deviceModelNumber || record.serialNumber) && (
+                <div className="tech-dashboard-card-meta">
+                  {record.deviceModelNumber && (
+                    <span className="tech-dashboard-card-meta-item">
+                      📋 Model #: {record.deviceModelNumber}
+                    </span>
+                  )}
+                  {record.serialNumber && (
+                    <span className="tech-dashboard-card-meta-item">
+                      🔢 Serial #: {record.serialNumber}
+                    </span>
+                  )}
+                </div>
               )}
-              
-              <Box sx={{ mt: 2, mb: 2, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-                  Issue:
-                </Typography>
-                <Typography variant="body2">
-                  {record.deviceIssue}
-                </Typography>
-                {record.additionalInfo && (
-                  <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
-                    Additional info: {record.additionalInfo}
-                  </Typography>
-                )}
-              </Box>
-              
+
               {(record.operatingSystem || record.ram || record.storage || record.processor || record.graphicsCard) && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-                    Specifications:
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
-                    {record.operatingSystem && `OS: ${record.operatingSystem}`}<br/>
-                    {record.ram && `RAM: ${record.ram}`}<br/>
-                    {record.storage && `Storage: ${record.storage}`}<br/>
-                    {record.processor && `CPU: ${record.processor}`}<br/>
-                    {record.graphicsCard && `GPU: ${record.graphicsCard}`}
-                  </Typography>
-                </Box>
+                <div className="tech-dashboard-card-meta">
+                  {record.operatingSystem && (
+                    <span className="tech-dashboard-card-meta-item">
+                      💻 OS: {record.operatingSystem}
+                    </span>
+                  )}
+                  {record.ram && (
+                    <span className="tech-dashboard-card-meta-item">
+                      🧠 RAM: {record.ram}
+                    </span>
+                  )}
+                  {record.storage && (
+                    <span className="tech-dashboard-card-meta-item">
+                      💾 Storage: {record.storage}
+                    </span>
+                  )}
+                  {record.processor && (
+                    <span className="tech-dashboard-card-meta-item">
+                      ⚡ CPU: {record.processor}
+                    </span>
+                  )}
+                  {record.graphicsCard && (
+                    <span className="tech-dashboard-card-meta-item">
+                      🎮 GPU: {record.graphicsCard}
+                    </span>
+                  )}
+                </div>
               )}
-              
-              <Box sx={{ mb: 2 }}>
-                {record.repair_guide ? (
-                  <Typography variant="body2" color="success.main" sx={{ fontWeight: 500 }}>
-                    ✅ Guide Generated
-                    <br/>
-                    <Typography variant="caption" component="span">
-                      {new Date(record.guide_generated_at).toLocaleString()}
-                    </Typography>
-                  </Typography>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    ⏳ No guide generated yet
-                  </Typography>
-                )}
-              </Box>
-              
-              <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+
+              <div className="tech-dashboard-card-meta">
+                <span className="tech-dashboard-card-meta-item">
+                  📅 {new Date(record.timestamp).toLocaleDateString()}
+                </span>
+                <span className="tech-dashboard-card-meta-item">
+                  {record.repair_guide ? (
+                    <>✅ Guide Generated: {new Date(record.guide_generated_at).toLocaleString()}</>
+                  ) : (
+                    <>⏳ No guide generated yet</>
+                  )}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '20px', flexWrap: 'wrap' }}>
                 {!record.repair_guide ? (
-                  <Button 
-                    variant="contained" 
-                    fullWidth
+                  <button
+                    className="tech-dashboard-btn tech-dashboard-btn-primary"
                     onClick={() => generateGuide(record._id)}
                     disabled={generatingGuideId === record._id}
-                    startIcon={generatingGuideId === record._id ? <CircularProgress size={20} color="inherit" /> : null}
                   >
                     {generatingGuideId === record._id ? 'Generating...' : 'Generate Guide'}
-                  </Button>
+                  </button>
                 ) : (
-                  <Button 
-                    variant="outlined" 
-                    fullWidth
+                  <button
+                    className="tech-dashboard-btn tech-dashboard-btn-secondary"
                     onClick={() => handleViewGuide(record.repair_guide)}
                   >
                     View Guide
-                  </Button>
+                  </button>
                 )}
-              </Box>
-            </CardContent>
-          </Card>
+              </div>
+            </div>
+          </div>
         ))}
-      </Box>
+      </div>
 
       {/* Dialog for displaying formatted repair guide */}
-      <Dialog 
-        open={dialogOpen} 
-        onClose={handleCloseDialog}
-        maxWidth="md"
-        fullWidth
-        fullScreen={false}
-        PaperProps={{
-          sx: { 
-            maxHeight: '90vh',
-            m: { xs: 1, sm: 2 },
-            maxWidth: { xs: 'calc(100% - 16px)', sm: '600px' }
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 1 }}>
-          <Typography component="div" variant="h5" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-            Repair Guide
-          </Typography>
-        </DialogTitle>
-        <DialogContent dividers sx={{ p: { xs: 2, sm: 3 } }}>
-          <RepairGuideFormatter repairGuide={selectedGuide} />
-        </DialogContent>
-        <DialogActions sx={{ p: { xs: 1.5, sm: 2 } }}>
-          <Button onClick={handleCloseDialog} color="primary" fullWidth={false}>
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      {dialogOpen && (
+        <div className="tech-dashboard-dialog-overlay" onClick={handleCloseDialog}>
+          <div className="tech-dashboard-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="tech-dashboard-dialog-header">
+              <h2 className="tech-dashboard-dialog-title">Repair Guide</h2>
+              <button
+                className="tech-dashboard-dialog-close"
+                onClick={handleCloseDialog}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="tech-dashboard-dialog-content">
+              <RepairGuideFormatter repairGuide={selectedGuide} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        .tech-dashboard-dialog-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(5,8,15,0.8);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 20px;
+        }
+
+        .tech-dashboard-dialog {
+          background: rgba(255,255,255,0.04);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(255,255,255,0.09);
+          border-radius: 16px;
+          max-width: 700px;
+          width: 100%;
+          max-height: 90vh;
+          overflow-y: auto;
+          position: relative;
+        }
+
+        .tech-dashboard-dialog-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 24px 24px 16px;
+          border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .tech-dashboard-dialog-title {
+          font-family: 'Syne', sans-serif;
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #f0f4ff;
+          margin: 0;
+        }
+
+        .tech-dashboard-dialog-close {
+          background: none;
+          border: none;
+          color: #94a3b8;
+          font-size: 1.5rem;
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 6px;
+          transition: all 0.2s ease;
+        }
+
+        .tech-dashboard-dialog-close:hover {
+          background: rgba(255,255,255,0.1);
+          color: #f0f4ff;
+        }
+
+        .tech-dashboard-dialog-content {
+          padding: 24px;
+        }
+      `}</style>
+    </div>
   );
 };
 

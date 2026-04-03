@@ -1,0 +1,420 @@
+/* Technician Dashboard - Dark Theme to match Hero Section */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+.tech-dashboard-container {
+    min-height: 100vh;
+    background: #05080f;
+    font-family: 'DM Sans', sans-serif;
+    position: relative;
+    overflow: hidden;
+    padding: 24px;
+    color: #f0f4ff;
+}
+
+.tech-dashboard-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    will-change: transform;
+}
+.tech-dashboard-orb-1 {
+    width: 350px; height: 350px;
+    background: radial-gradient(circle, rgba(37,99,235,0.18) 0%, transparent 70%);
+    top: -100px; right: -100px;
+    animation: dashOrbFloat1 20s ease-in-out infinite;
+}
+.tech-dashboard-orb-2 {
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(124,58,237,0.14) 0%, transparent 70%);
+    bottom: -80px; left: -80px;
+    animation: dashOrbFloat2 24s ease-in-out infinite;
+}
+
+@keyframes dashOrbFloat1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-25px, 15px) scale(1.04); }
+}
+@keyframes dashOrbFloat2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(20px, -25px) scale(1.02); }
+}
+
+.tech-dashboard-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 45px 45px;
+    pointer-events: none;
+}
+
+.tech-dashboard-header {
+    text-align: center;
+    margin-bottom: 32px;
+    position: relative;
+    z-index: 1;
+}
+
+.tech-dashboard-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.2rem, 4vw, 2.8rem);
+    font-weight: 800;
+    background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 55%, #67e8f9 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.02em;
+}
+
+.tech-dashboard-subtitle {
+    font-size: 1.1rem;
+    font-weight: 300;
+    color: #94a3b8;
+    margin: 0;
+}
+
+.tech-dashboard-search {
+    margin-bottom: 32px;
+    max-width: 400px;
+    position: relative;
+    z-index: 1;
+}
+
+.tech-dashboard-search-input {
+    width: 100%;
+    padding: 16px 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    color: #f0f4ff;
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+}
+
+.tech-dashboard-search-input::placeholder {
+    color: #64748b;
+}
+
+.tech-dashboard-search-input:focus {
+    outline: none;
+    border-color: #60a5fa;
+    background: rgba(255,255,255,0.08);
+    box-shadow: 0 0 0 3px rgba(96,165,250,0.15);
+}
+
+.tech-dashboard-card {
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    position: relative;
+    z-index: 1;
+    transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+}
+
+.tech-dashboard-card:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.12);
+    transform: translateY(-2px);
+}
+
+.tech-dashboard-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.tech-dashboard-card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #f0f4ff;
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.tech-dashboard-repair-number {
+    font-family: 'DM Sans', monospace;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #60a5fa;
+    background: rgba(96,165,250,0.1);
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(96,165,250,0.2);
+}
+
+.tech-dashboard-card-content {
+    color: #94a3b8;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.tech-dashboard-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 16px;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.tech-dashboard-card-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tech-dashboard-btn {
+    padding: 12px 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.tech-dashboard-btn-primary {
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(37,99,235,0.3);
+}
+
+.tech-dashboard-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(37,99,235,0.4);
+}
+
+.tech-dashboard-btn-secondary {
+    background: rgba(255,255,255,0.06);
+    color: #f0f4ff;
+    border: 1px solid rgba(255,255,255,0.12);
+}
+
+.tech-dashboard-btn-secondary:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+}
+
+.tech-dashboard-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.tech-dashboard-loading {
+    text-align: center;
+    padding: 60px 20px;
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.tech-dashboard-loading p {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #94a3b8;
+}
+
+.tech-dashboard-error {
+    text-align: center;
+    padding: 40px 20px;
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.tech-dashboard-error p {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #fca5a5;
+}
+
+.tech-dashboard-empty {
+    text-align: center;
+    padding: 60px 20px;
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.tech-dashboard-empty p {
+    margin: 0 0 16px 0;
+    font-size: 1.2rem;
+    color: #f0f4ff;
+    font-weight: 500;
+}
+
+.tech-dashboard-empty span {
+    font-size: 0.95rem;
+    color: #94a3b8;
+}
+
+/* Repair Guide Formatter Styles */
+.repair-guide-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.repair-guide-card {
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 16px;
+    padding: 20px;
+    transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+}
+
+.repair-guide-card:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.12);
+}
+
+.repair-guide-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #f0f4ff;
+}
+
+.repair-guide-complexity {
+    display: inline-block;
+    background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.repair-guide-list {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 0.9rem;
+    color: #94a3b8;
+    line-height: 1.6;
+}
+
+.repair-guide-list li {
+    margin-bottom: 8px;
+}
+
+.repair-guide-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 8px 0;
+}
+
+.repair-guide-step-number {
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    color: white;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+}
+
+.repair-guide-test-number {
+    background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+    color: white;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(76,175,80,0.3);
+}
+
+.repair-guide-step-content {
+    flex: 1;
+    line-height: 1.6;
+    font-size: 0.9rem;
+    color: #94a3b8;
+    word-break: break-word;
+}
+
+/* Dialog/Modal Styles */
+.tech-dashboard-dialog {
+    background: rgba(5,8,15,0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+}
+
+.tech-dashboard-dialog-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f0f4ff;
+    margin: 0;
+}
+
+.tech-dashboard-dialog-content {
+    color: #94a3b8;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .tech-dashboard-container {
+        padding: 16px;
+    }
+
+    .tech-dashboard-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .tech-dashboard-card-meta {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .tech-dashboard-btn {
+        width: 100%;
+        margin-top: 8px;
+    }
+}
