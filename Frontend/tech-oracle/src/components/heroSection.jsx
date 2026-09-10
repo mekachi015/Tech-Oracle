@@ -13,7 +13,7 @@ const HeroSection = ({ formSectionId = "repair-form" }) => {
           }
         });
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     const animatedEls = heroRef.current?.querySelectorAll(".hero-animate");
@@ -34,38 +34,163 @@ const HeroSection = ({ formSectionId = "repair-form" }) => {
   const services = [
     {
       icon: (
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 28, height: 28 }}>
-          <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" strokeWidth="1.6" />
-          <path d="M8 12h8M12 9v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{ width: 28, height: 28 }}
+        >
+          <rect
+            x="2"
+            y="6"
+            width="20"
+            height="12"
+            rx="2"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          />
+          <path
+            d="M8 12h8M12 9v6"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
         </svg>
       ),
-      label: "Speed Boost",
-      title: "SSD & RAM Upgrades",
-      description: "Breathe new life into aging hardware with faster storage and expanded memory.",
+      label: "LCD & Mobile Repairs",
+      title: "LCD Replacement & Phone Repairs",
+      description:
+        "From cracked screens to charging port issues, we restore your phone's display and performance to like-new condition.",
     },
     {
       icon: (
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 28, height: 28 }}>
-          <path d="M12 3C12 3 6 6 6 12a6 6 0 0012 0c0-6-6-9-6-9z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-          <path d="M12 12v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{ width: 28, height: 28 }}
+        >
+          <path
+            d="M12 3C12 3 6 6 6 12a6 6 0 0012 0c0-6-6-9-6-9z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M12 12v4"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
           <circle cx="12" cy="18" r="1" fill="currentColor" />
         </svg>
       ),
-      label: "Thermal Care",
-      title: "Deep Clean & Re-paste",
-      description: "Stop overheating with professional deep cleaning and thermal paste replacement.",
+      label: "PC Repairs",
+      title: "Computer & PC Basic Repairs",
+      description:
+        "Slow startup, hardware faults, or software issues — we diagnose and fix your desktop or laptop fast.",
     },
     {
       icon: (
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 28, height: 28 }}>
-          <rect x="3" y="3" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.6" />
-          <path d="M8 21h8M12 17v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          <path d="M7 10l3 3 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{ width: 28, height: 28 }}
+        >
+          <rect
+            x="3"
+            y="3"
+            width="18"
+            height="14"
+            rx="2"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          />
+          <path
+            d="M8 21h8M12 17v4"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          <path
+            d="M7 10l3 3 4-4"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       ),
-      label: "System Refresh",
-      title: "OS Optimization & Clean Install",
-      description: "Windows tuning and fresh OS installs for a snappy, bloat-free experience.",
+      label: "Gaming Repairs",
+      title: "Controller & Joystick Repairs",
+      description:
+        "Stick drift, unresponsive buttons, and connectivity problems fixed to get you back in the game.",
+    },
+    {
+      icon: (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{ width: 28, height: 28 }}
+        >
+          <rect
+            x="3"
+            y="3"
+            width="18"
+            height="14"
+            rx="2"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          />
+          <path
+            d="M8 21h8M12 17v4"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          <path
+            d="M7 10l3 3 4-4"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+      label: "Laptop Repairs",
+      title: "Laptop Screen & Keyboard Replacement",
+      description:
+        "Cracked screens, unresponsive keys, or broken hinges — we replace and repair laptop components to get you back to full function.",
+    },
+    {
+      icon: (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{ width: 28, height: 28 }}
+        >
+          <path
+            d="M12 3C12 3 6 6 6 12a6 6 0 0012 0c0-6-6-9-6-9z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M12 12v4"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          <circle cx="12" cy="18" r="1" fill="currentColor" />
+        </svg>
+      ),
+      label: "Deep Clean",
+      title: "Deep Cleaning for Electronics",
+      description:
+        "Dust and grime slow your devices down — we deep clean internals to keep them running cool and efficient.",
     },
   ];
 
@@ -389,9 +514,10 @@ const HeroSection = ({ formSectionId = "repair-form" }) => {
             </h1>
 
             <p className="hero-sub hero-animate hero-delay-3">
-              From performance-boosting SSD upgrades to deep thermal cleaning,
-              we provide professional solutions for a faster, cooler, and more
-              reliable device.
+              Most repair shops guess. We diagnose. Our AI-powered system
+              identifies the exact fault in your phone, PC, laptop, or
+              controller before we even open it up... Faster turnaround, fewer
+              misdiagnoses, better results.
             </p>
 
             <div className="hero-animate hero-delay-4">
@@ -399,14 +525,24 @@ const HeroSection = ({ formSectionId = "repair-form" }) => {
                 Book a Repair
                 <span className="hero-cta-arrow">
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M3 8h10M9 4l4 4-4 4"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </span>
               </button>
             </div>
 
             <div className="hero-trust hero-animate hero-delay-5">
-              {["AI powered repair diagnosis", "Always available for repairs", "24/7 communication with technician"].map((item) => (
+              {[
+               " AI powered repair diagnosis",
+                " Always available for repairs",
+                " 24/7 communication with technician"
+              ].map((item) => (
                 <span className="hero-trust-item" key={item}>
                   <span className="hero-trust-check">✓</span>
                   {item}
